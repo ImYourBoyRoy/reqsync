@@ -1,0 +1,19 @@
+# examples/reqsync.monorepo.toml
+
+# Monorepo-style layout where base.txt includes others via "-r".
+path = "requirements/base.txt"
+follow_includes = true
+update_constraints = false
+
+# Keep default floor policy
+policy = "lower-bound"
+
+# Explicitly avoid adopting pre/dev unless requested
+allow_prerelease = false
+
+# Limit scope to your top-levels, skip internal forks
+only = ["crewai*", "langchain*", "pandas", "pydantic"]
+exclude = ["your-internal-*"]
+
+# Keep writes deterministic and safe
+timestamped_backups = true

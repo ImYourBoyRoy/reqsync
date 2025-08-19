@@ -1,0 +1,55 @@
+# .pre-commit-config.yaml
+
+minimum_pre_commit_version: "3.7.0"
+
+default_install_hook_types: [pre-commit]
+default_language_version:
+  python: python3
+
+repos:
+  # Fast formatter + linter (configured in pyproject.toml)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.7
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # Type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.0
+    hooks:
+      - id: mypy
+        files: ^src/reqsync/
+        additional_dependencies:
+          # Add types for popular libs if needed
+          - typing-extensions>=4.7
+
+  # General file hygiene
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # Ensure requirements.txt stays in sync (runs only when it’s staged)
+  - repo: local
+    hooks:
+      - id: reqsync-check
+        name: reqsync (check sync)
+        entry: reqsync run --no-upgrade --check --path requirements.txt
+        language: system
+        pass_filenames: false
+        files: ^requirements(\.txt)?$
+        stages: [pre-commit]
+
+ci:
+  autofix_prs: true
+  autoupdate_schedule: monthly

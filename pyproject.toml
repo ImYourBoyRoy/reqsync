@@ -1,0 +1,150 @@
+[build-system]
+requires = ["hatchling>=1.25", "hatch-vcs>=0.4"]
+build-backend = "hatchling.build"
+
+[project]
+name = "reqsync"
+dynamic = ["version"]
+description = "Synchronize requirements.txt to >= installed versions, safely and atomically."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [
+  { name = "ImYourBoyRoy", email = "roy.dawson.iv@gmail.com.com" }
+]
+keywords = ["pip", "requirements", "dependencies", "automation", "venv", "packaging"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Environment :: Console",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Typing :: Typed"
+]
+
+# Minimal runtime deps
+dependencies = [
+  "typer>=0.12",                          # CLI
+  "packaging>=24.1",                      # PEP 440 parsing
+  'tomli>=2.0; python_version < "3.11"',  # TOML parsing on older Pythons
+  'typing-extensions>=4.7; python_version < "3.11"'  # for older type hints
+]
+
+[project.optional-dependencies]
+# Pretty console output or richer diffs if you decide to use it later
+pretty = ["rich>=13.7"]
+# Dev stack mirrors CI; handy for local hacking
+dev = [
+  "pytest>=8.2",
+  "mypy>=1.10",
+  "ruff>=0.5.0",
+  "build>=1.2.1",
+  "twine>=5.1"
+]
+
+[project.urls]
+Homepage = "https://github.com/ImYourBoyRoy/reqsync"
+Source = "https://github.com/ImYourBoyRoy/reqsync"
+Issues = "https://github.com/ImYourBoyRoy/reqsync/issues"
+
+[project.scripts]
+# Typer app exposed directly as a Click command
+reqsync = "reqsync.cli:app"
+
+# --------------------------
+# Versioning via Git tags
+# --------------------------
+[tool.hatch.version]
+source = "vcs"
+tag-pattern = "v(?P<version>.*)"
+
+# --------------------------
+# Hatch build config (src/)
+# --------------------------
+[tool.hatch.build.targets.wheel]
+packages = ["src/reqsync"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src",
+  "README.md",
+  "LICENSE",
+  "CHANGELOG.md",
+  "examples/*",
+  "docs/*"
+]
+
+# --------------------------
+# Tooling: Ruff (lint/format)
+# --------------------------
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+extend-exclude = ["dist", "build", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "RUF"]
+ignore = []
+per-file-ignores = { "src/reqsync/cli.py" = ["B008"] }
+
+[tool.ruff.format]
+quote-style = "preserve"
+indent-style = "space"
+line-ending = "lf"
+
+# --------------------------
+# Tooling: MyPy
+# --------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+strict_optional = true
+no_implicit_optional = true
+show_error_codes = true
+pretty = true
+# Third-party libs may not ship types; keep this pragmatic
+ignore_missing_imports = true
+
+# --------------------------
+# Tooling: Pytest
+# --------------------------
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+# --------------------------
+# Optional: default CLI/config knobs users can override
+# --------------------------
+[tool.reqsync]
+path = "requirements.txt"
+follow_includes = true
+update_constraints = false
+policy = "lower-bound"           # lower-bound | floor-only | floor-and-cap
+allow_prerelease = false
+keep_local = false
+no_upgrade = false
+pip_timeout_sec = 900
+pip_args = ""
+only = []
+exclude = []
+check = false
+dry_run = false
+show_diff = false
+json_report = ""
+backup_suffix = ".bak"
+timestamped_backups = true
+log_file = ""
+verbosity = 0
+quiet = false
+system_ok = false
+allow_hashes = false
+allow_dirty = true
+last_wins = false

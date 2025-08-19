@@ -1,0 +1,22 @@
+# .gitattributes
+
+# Normalize all text files to LF in the repo
+* text=auto eol=lf
+
+# Treat common binaries correctly
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.bz2 binary
+*.xz binary
+*.7z binary
+
+# Windows-native scripts keep CRLF if you ever add them
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf

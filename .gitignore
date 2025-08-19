@@ -1,0 +1,78 @@
+# .gitignore
+
+# ---------------------
+# Python bytecode/caches
+# ---------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.pyre/
+.pytype/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.cache/
+
+# ---------------------
+# Virtual environments
+# ---------------------
+.venv/
+venv/
+env/
+.conda/
+conda-env/
+
+# ---------------------
+# Distribution / packaging
+# ---------------------
+build/
+dist/
+wheelhouse/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+.installed.cfg
+
+# ---------------------
+# Test/coverage artifacts
+# ---------------------
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+pytestdebug.log
+.tox/
+.nox/
+.hypothesis/
+
+# ---------------------
+# IDE/editor/OS files
+# ---------------------
+.vscode/
+.idea/
+*.iml
+*.code-workspace
+.DS_Store
+Thumbs.db
+
+# ---------------------
+# Logs and local env
+# ---------------------
+*.log
+.env
+.env.*
+.envrc
+
+# ---------------------
+# Reqsync artifacts/backups
+# ---------------------
+.artifacts/
+*.bak
+*.bak.*
+requirements*.bak
+reqsync-*.tmp
+
+# ---------------------
+# Node or misc (in case of mixed repos)
+# ---------------------
+node_modules/
