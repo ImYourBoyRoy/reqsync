@@ -57,10 +57,6 @@ Issues = "https://github.com/ImYourBoyRoy/reqsync/issues"
 # Typer app exposed directly as a Click command
 reqsync = "reqsync.cli:app"
 
-
-[tool.setuptools_scm]
-fallback_version = "0.1.0"
-
 # --------------------------
 # Versioning via Git tags
 # --------------------------
