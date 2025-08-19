@@ -1,0 +1,26 @@
+# examples/reqsync.toml
+
+# Minimal, safe defaults for a single-file project.
+path = "requirements.txt"
+follow_includes = true
+update_constraints = false
+policy = "lower-bound"
+allow_prerelease = false
+keep_local = false
+
+# Fast checks without touching the env (pair with --no-upgrade on CLI if desired)
+check = false
+dry_run = false
+show_diff = false
+
+# Backups and logging
+backup_suffix = ".bak"
+timestamped_backups = true
+log_file = ""
+verbosity = 0
+quiet = false
+
+# Guards
+system_ok = false
+allow_hashes = false
+last_wins = false

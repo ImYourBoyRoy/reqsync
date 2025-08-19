@@ -1,0 +1,6 @@
+typer>=0.16.1
+packaging>=25.0
+portalocker>=3.2.0
+tomli>=2.2.1; python_version < "3.11"
+typing-extensions>=4.14.1
+rich>=14.1.0

@@ -1,0 +1,12 @@
+# examples/reqsync.floor_and_cap.toml
+
+# Adopt floor-and-cap for teams that want a safety ceiling:
+# >= installed, < next major (SemVer guardrail).
+path = "requirements.txt"
+policy = "floor-and-cap"
+
+# Teams often allow pre-releases only for a few packages; default is off.
+allow_prerelease = false
+
+# You can still pass per-package policies via CLI flags (patterns) if needed.
+# This file keeps it simple; see docs/CONFIG.md for advanced overrides.
