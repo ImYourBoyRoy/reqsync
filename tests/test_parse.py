@@ -1,6 +1,5 @@
 # tests/test_io.py
 
-from pathlib import Path
 
 from reqsync._types import Options
 from reqsync.core import sync
@@ -10,7 +9,7 @@ from reqsync.io import read_text_preserve, write_text_preserve
 def test_preserve_bom_and_newlines_on_write(tmp_path, monkeypatch):
     # Create a file with BOM and CRLF endings
     target = tmp_path / "requirements.txt"
-    raw = "\ufeffpandas\n".encode("utf-8")  # BOM + LF; we will convert to CRLF on write
+    raw = "\ufeffpandas\n".encode()  # BOM + LF; we will convert to CRLF on write
     target.write_bytes(raw.replace(b"\n", b"\r\n"))
 
     from reqsync import env as env_mod
@@ -31,7 +30,6 @@ def test_preserve_bom_and_newlines_on_write(tmp_path, monkeypatch):
 
 def test_read_write_roundtrip_preserves_format(tmp_path):
     p = tmp_path / "x.txt"
-    content = "line1\r\nline2\r\n"
     p.write_bytes(b"\xef\xbb\xbfline1\r\nline2\r\n")  # BOM + CRLF
     text, nl, bom = read_text_preserve(p)
     assert nl == "\r\n" and bom is True

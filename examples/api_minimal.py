@@ -1,6 +1,7 @@
 # examples/api_minimal.py
 
 from pathlib import Path
+
 from reqsync._types import Options
 from reqsync.core import sync
 

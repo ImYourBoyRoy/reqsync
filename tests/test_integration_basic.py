@@ -1,11 +1,9 @@
 # tests/test_integration_basic.py
 
-from pathlib import Path
-from reqsync._types import Options
-from reqsync.core import sync
-
 # FIX: Import the module where the functions are USED
 from reqsync import core as core_mod
+from reqsync._types import Options
+from reqsync.core import sync
 
 
 def test_end_to_end_write_backup_and_idempotence(tmp_path, monkeypatch):

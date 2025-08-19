@@ -2,11 +2,10 @@
 
 from pathlib import Path
 
-from reqsync._types import Options
-from reqsync.core import sync
-
 # Import the module where the functions are USED
 from reqsync import core as core_mod
+from reqsync._types import Options
+from reqsync.core import sync
 
 
 def test_follow_includes_and_skip_constraints(tmp_path: Path, monkeypatch):

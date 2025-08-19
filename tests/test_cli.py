@@ -3,7 +3,6 @@
 import textwrap
 from pathlib import Path
 
-import pytest
 from typer.testing import CliRunner
 
 # Import the module where the functions are USED

@@ -1,13 +1,14 @@
 # tests/test_env.py
 
 import subprocess
-from pathlib import Path
 import textwrap  # Add this import for the write helper
-import pytest
+from pathlib import Path
+
+from typer.testing import CliRunner
+
 from reqsync import env as env_mod
 from reqsync._types import ExitCode
 from reqsync.cli import app
-from typer.testing import CliRunner
 
 runner = CliRunner()
 
