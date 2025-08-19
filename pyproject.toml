@@ -88,11 +88,10 @@ target-version = "py312"
 line-length = 120
 extend-exclude = ["dist", "build", ".venv"]
 
-per-file-ignores = { "src/reqsync/cli.py" = ["B008"] }
-
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "RUF"]
 ignore = []
+per-file-ignores = { "src/reqsync/cli.py" = ["B008"] }
 
 [tool.ruff.format]
 quote-style = "preserve"
