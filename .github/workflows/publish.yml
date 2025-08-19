@@ -1,0 +1,77 @@
+# .github/workflows/publish.yml
+
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write  # required for Trusted Publishing (OIDC)
+  # attestations: write  # optional, if you later add supply-chain attestations
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # hatch-vcs needs tags
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Upgrade pip
+        run: python -m pip install -U pip
+
+      - name: Install build backend
+        run: |
+          python -m pip install -U build hatchling hatch-vcs twine
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      - name: Verify version matches tag
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          PKG_VERSION="${TAG_NAME#v}"
+          echo "Tag: ${TAG_NAME}  -> Expected version: ${PKG_VERSION}"
+          python - <<'PY'
+          import os, glob, subprocess, sys
+          import re, pathlib
+          dist = sorted(glob.glob("dist/*.whl")) + sorted(glob.glob("dist/*.tar.gz"))
+          assert dist, "No artifacts in dist/"
+          print("Artifacts:", dist)
+          # Install wheel and assert __version__
+          wheel = [p for p in dist if p.endswith(".whl")]
+          if wheel:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "--force-reinstall", wheel[0]])
+            import reqsync
+            built_ver = getattr(reqsync, "__version__", None)
+            exp = os.environ.get("PKG_VERSION")
+            assert built_ver == exp, f"Built version {built_ver} != tag version {exp}"
+            print("Verified version:", built_ver)
+          PY
+
+      - name: Twine check metadata
+        run: python -m twine check dist/*
+
+      - name: Publish to PyPI (Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # No username/password needed; uses OIDC. Configure Trusted Publisher on PyPI first.
+          # skip-existing: true  # not recommended for tagged releases; leave commented
+          verbose: true
