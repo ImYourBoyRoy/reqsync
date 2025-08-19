@@ -126,78 +126,81 @@ def sync(options: Options) -> Result:
     if not root.exists():
         raise FileNotFoundError(str(root))
 
-    # The file_lock context manager has been removed.
-    # The logic is now at the top level of the function.
-    logging.info("Reading and parsing requirements files...")
-    root_text, _, _ = read_text_preserve(root)
-    try:
-        guard_hashes(root_text.splitlines(), allow_hashes=options.allow_hashes)
-    except ValueError as e:
-        raise RuntimeError(str(e)) from e
+    logging.info("Acquiring file lock for %s...", root.name)
+    with file_lock(root, timeout=5):
+        logging.info("Reading and parsing requirements files...")
+        root_text, _, _ = read_text_preserve(root)
+        try:
+            guard_hashes(root_text.splitlines(), allow_hashes=options.allow_hashes)
+        except ValueError as e:
+            raise RuntimeError(str(e)) from e
 
-    if not options.no_upgrade:
-        logging.info("Upgrading environment via pip (may take a while)...")
-        code, _ = run_pip_upgrade(str(root), timeout_sec=options.pip_timeout_sec, extra_args=options.pip_args)
-        if code != 0:
-            raise RuntimeError("pip install -U failed. See logs.")
-        logging.info("Environment upgrade complete.")
+        if not options.no_upgrade:
+            logging.info("Upgrading environment via pip (may take a while)...")
+            code, _ = run_pip_upgrade(
+                str(root), timeout_sec=options.pip_timeout_sec, extra_args=options.pip_args
+            )
+            if code != 0:
+                raise RuntimeError("pip install -U failed. See logs.")
+            logging.info("Environment upgrade complete.")
 
-    logging.info("Inspecting installed packages...")
-    installed = get_installed_versions()
+        logging.info("Inspecting installed packages...")
+        installed = get_installed_versions()
 
-    files = _resolve_includes(root, follow=options.follow_includes)
-    logging.info("Resolved %d file(s) (follow_includes=%s)", len(files), options.follow_includes)
-    file_results: list[FileChange] = []
-    aggregate_changes: list[Change] = []
-    cap = CapStrategy(default="next-major")
-    file_properties: dict[Path, tuple[bool]] = {}
+        files = _resolve_includes(root, follow=options.follow_includes)
+        logging.info("Resolved %d file(s) (follow_includes=%s)", len(files), options.follow_includes)
+        file_results: list[FileChange] = []
+        aggregate_changes: list[Change] = []
+        cap = CapStrategy(default="next-major")
 
-    for f in files:
-        text, _, bom = read_text_preserve(f)
-        file_properties[f] = (bom,)
-        constraints = find_constraints(text.splitlines())
-        if constraints and not options.update_constraints and f != root:
-            file_results.append(FileChange(file=f, original_text=text, new_text=text, changes=[]))
-            continue
-
-        new_text, changes = _rewrite_text(f, text, installed, options, cap)
-        if changes:
-            aggregate_changes.extend(changes)
-        file_results.append(FileChange(file=f, original_text=text, new_text=new_text, changes=changes))
-
-    changed = any(fr.original_text != fr.new_text for fr in file_results)
-
-    if options.check:
-        diff = report_mod.make_diff(file_results) if changed and (options.show_diff or options.dry_run) else None
-        logging.info("Check complete. Changes detected: %s", changed)
-        return Result(changed=True, files=file_results, diff=diff)
-
-    if options.dry_run:
-        diff = report_mod.make_diff(file_results) if changed and options.show_diff else None
-        logging.info("Dry run complete. Changes detected: %s", changed)
-        return Result(changed=changed, files=file_results, diff=diff)
-
-    backups: list[Path] = []
-    if changed:
-        logging.info("Writing %d change(s) to disk...", len(aggregate_changes))
-        for fr in file_results:
-            if fr.original_text == fr.new_text:
+        for f in files:
+            text, _, _ = read_text_preserve(f)
+            constraints = find_constraints(text.splitlines())
+            if constraints and not options.update_constraints and f != root:
+                file_results.append(FileChange(file=f, original_text=text, new_text=text, changes=[]))
                 continue
-            backup = backup_file(fr.file, options.backup_suffix, options.timestamped_backups)
-            backups.append(backup)
-            try:
-                bom = file_properties.get(fr.file, (False,))[0]
-                write_text_preserve(fr.file, fr.new_text, bom)
-            except Exception as e:
-                for b in backups:
-                    orig = b
-                    target = Path(str(b).rsplit(options.backup_suffix, 1)[0])
-                    try:
-                        shutil.copy2(orig, target)
-                    except Exception:
-                        pass
-                raise RuntimeError(f"Write failed and backups restored: {e}") from e
 
-    diff = report_mod.make_diff(file_results) if changed and options.show_diff else None
-    logging.info("Reqsync process finished.")
-    return Result(changed=changed, files=file_results, diff=diff, backup_paths=backups)
+            new_text, changes = _rewrite_text(f, text, installed, options, cap)
+            if changes:
+                aggregate_changes.extend(changes)
+            file_results.append(FileChange(file=f, original_text=text, new_text=new_text, changes=changes))
+
+        changed = any(fr.original_text != fr.new_text for fr in file_results)
+
+        if options.check:
+            diff = (
+                report_mod.make_diff(file_results)
+                if changed and (options.show_diff or options.dry_run)
+                else None
+            )
+            logging.info("Check complete. Changes detected: %s", changed)
+            return Result(changed=True, files=file_results, diff=diff)
+
+        if options.dry_run:
+            diff = report_mod.make_diff(file_results) if changed and options.show_diff else None
+            logging.info("Dry run complete. Changes detected: %s", changed)
+            return Result(changed=changed, files=file_results, diff=diff)
+
+        backups: list[Path] = []
+        if changed:
+            logging.info("Writing %d change(s) to disk...", len(aggregate_changes))
+            for fr in file_results:
+                if fr.original_text == fr.new_text:
+                    continue
+                backup = backup_file(fr.file, options.backup_suffix, options.timestamped_backups)
+                backups.append(backup)
+                try:
+                    write_text_preserve(fr.file, fr.new_text, *read_text_preserve(fr.file)[1:])
+                except Exception as e:
+                    for b in backups:
+                        orig = b
+                        target = Path(str(b).rsplit(options.backup_suffix, 1)[0])
+                        try:
+                            shutil.copy2(orig, target)
+                        except Exception:
+                            pass
+                    raise RuntimeError(f"Write failed and backups restored: {e}") from e
+
+        diff = report_mod.make_diff(file_results) if changed and options.show_diff else None
+        logging.info("Reqsync process finished.")
+        return Result(changed=changed, files=file_results, diff=diff, backup_paths=backups)
