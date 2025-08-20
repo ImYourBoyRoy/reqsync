@@ -17,7 +17,7 @@ runner = CliRunner()
 def write(p: Path, content: str) -> Path:
     """Helper to write dedented content to a file."""
     text = textwrap.dedent(content).lstrip("\n")
-    p.write_text(text, encoding="utf-8", newline="\n")
+    p.write_text(text, encoding="utf-8")
     return p
 
 

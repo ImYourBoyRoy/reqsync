@@ -90,7 +90,7 @@ extend-exclude = ["dist", "build", ".venv"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "RUF"]
-ignore = []
+ignore = ["UP045"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/reqsync/config.py" = ["UP038"]

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import typer
 from click.core import ParameterSource
@@ -49,15 +49,15 @@ def main_cli(
     no_upgrade: bool = typer.Option(False, help="Do not run pip upgrade; just rewrite to current env"),
     pip_timeout_sec: int = typer.Option(900, help="Timeout for pip upgrade in seconds"),
     pip_args: str = typer.Option("", help="Allowlisted pip args to pass through"),
-    only: str | None = typer.Option(None, help="Comma-separated package globs to include"),
-    exclude: str | None = typer.Option(None, help="Comma-separated package globs to exclude"),
+    only: Optional[str] = typer.Option(None, help="Comma-separated package globs to include"),
+    exclude: Optional[str] = typer.Option(None, help="Comma-separated package globs to exclude"),
     check: bool = typer.Option(False, help="Exit nonzero if changes would be made"),
     dry_run: bool = typer.Option(False, help="Preview changes without writing"),
     show_diff: bool = typer.Option(False, help="Show unified diff"),
-    json_report: Path | None = typer.Option(None, help="Write JSON report to this path"),
+    json_report: Optional[Path] = typer.Option(None, help="Write JSON report to this path"),
     backup_suffix: str = typer.Option(".bak", help="Backup suffix"),
     timestamped_backups: bool = typer.Option(True, help="Use timestamped backups"),
-    log_file: Path | None = typer.Option(None, help="Optional log file path"),
+    log_file: Optional[Path] = typer.Option(None, help="Optional log file path"),
     verbosity: int = typer.Option(0, "--verbose", "-v", count=True, help="Increase logging verbosity"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Reduce logging"),
     system_ok: bool = typer.Option(False, help="Allow running outside a venv"),
