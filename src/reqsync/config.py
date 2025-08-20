@@ -1,15 +1,30 @@
 # src/reqsync/config.py
 from __future__ import annotations
 
+import importlib
 import json
 import logging
-
-# Best practice for conditional, version-dependent imports for mypy
-import tomllib as toml
 from pathlib import Path
 from typing import Any
 
 from ._types import Options
+
+
+# Dynamically import tomllib (3.11+) or fall back to tomli; avoid static imports so mypy won't
+# require stubs for tomllib on older interpreters.
+def _import_toml_like() -> Any:
+    mod = None
+    try:
+        mod = importlib.import_module("tomllib")  # Python 3.11+
+    except Exception:
+        try:
+            mod = importlib.import_module("tomli")  # Backport
+        except Exception:
+            mod = None
+    return mod
+
+
+toml: Any = _import_toml_like()
 
 
 def _load_toml(path: Path) -> dict[str, Any]:
@@ -18,7 +33,6 @@ def _load_toml(path: Path) -> dict[str, Any]:
     try:
         with open(path, "rb") as f:
             data = toml.load(f)
-            # toml.load returns Any; ensure we hand back a dict
             return data if isinstance(data, dict) else {}
     except Exception:
         return {}
@@ -64,8 +78,7 @@ def _to_path(v: Any) -> Path | None:
 def _to_tuple(v: Any) -> tuple[str, ...]:
     if v is None:
         return ()
-    # Use Union for Python 3.8-3.9 compatibility
-    if isinstance(v, list | tuple):
+    if isinstance(v, list | tuple):  # py38/py39-friendly
         return tuple(str(x).strip() for x in v if str(x).strip())
     if isinstance(v, str):
         return tuple(p for p in (s.strip() for s in v.split(",")) if p)
@@ -73,8 +86,15 @@ def _to_tuple(v: Any) -> tuple[str, ...]:
 
 
 def merge_options(base: Options, overrides: dict[str, Any]) -> Options:
+    # Don't let config override an explicit CLI --path
+    cfg_path = _to_path(overrides.get("path"))
+    if cfg_path and Path(str(base.path)) == Path("requirements.txt"):
+        effective_path = cfg_path
+    else:
+        effective_path = base.path
+
     return Options(
-        path=_to_path(overrides.get("path")) or base.path,
+        path=effective_path,
         follow_includes=overrides.get("follow_includes", base.follow_includes),
         update_constraints=overrides.get("update_constraints", base.update_constraints),
         policy=overrides.get("policy", base.policy),
