@@ -14,26 +14,25 @@ from reqsync.cli import app
 runner = CliRunner()
 
 
-# Add the write helper for consistency
 def write(p: Path, content: str) -> Path:
-    p.write_text(textwrap.dedent(content).lstrip("\n"), encoding="utf-8", newline="\n")
+    """Helper to write dedented content to a file."""
+    text = textwrap.dedent(content).lstrip("\n")
+    p.write_text(text, encoding="utf-8", newline="\n")
     return p
 
 
 def test_venv_guard_blocks_without_system_ok(tmp_path: Path, monkeypatch):
     req = write(tmp_path / "requirements.txt", "pandas\n")
 
-    # Patch 'is_venv_active' in the 'env' module, which is the correct scope.
     monkeypatch.setattr(env_mod, "is_venv_active", lambda: False)
 
-    # Invoke the app without the "run" command.
+    # FIX: Remove the "run" command from the invoke call.
     res = runner.invoke(app, ["--path", str(req), "--no-upgrade", "--no-use-config"])
 
-    # FIX: Split the long f-string to conform to the line length limit.
     assert res.exit_code == ExitCode.SYSTEM_PYTHON_BLOCKED, (
-        f"Expected exit {ExitCode.SYSTEM_PYTHON_BLOCKED}, got {res.exit_code}.\nOutput:\n{res.output}"
+        f"Expected venv guard to block with exit {ExitCode.SYSTEM_PYTHON_BLOCKED}, but got {res.exit_code}.\n"
+        f"Output:\n{res.output}"
     )
-    # The error message from Typer goes to the output stream
     assert "virtualenv" in res.output.lower(), "Message should clearly explain the venv requirement"
 
 
@@ -50,7 +49,6 @@ def test_run_pip_upgrade_filters_disallowed_args(monkeypatch, tmp_path: Path):
         return R()
 
     monkeypatch.setattr(subprocess, "run", fake_run)
-    # This patch on core_mod is correct because sync() calls the alias directly
     code, out = core_mod.run_pip_upgrade(
         str(tmp_path / "requirements.txt"),
         timeout_sec=5,

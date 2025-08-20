@@ -9,7 +9,6 @@ from dataclasses import dataclass
 
 from packaging.requirements import Requirement
 
-# Directives we must not edit
 PIP_DIRECTIVE_PREFIXES = (
     "-r",
     "--requirement",
@@ -81,7 +80,6 @@ def parse_line(line: str) -> ParsedLine:
     raw, eol = _split_eol(line)
     stripped = raw.strip()
 
-    # FIX: Instantiate ParsedLine directly to resolve mypy errors.
     if not stripped or stripped.startswith("#"):
         return ParsedLine(original=line, content=None, comment="", eol=eol, requirement=None, kind="comment")
     if "--hash=" in stripped:

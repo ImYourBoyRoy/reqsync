@@ -6,8 +6,6 @@ from pathlib import Path
 from typing import Any
 
 import typer
-
-# FIX: Use correct public imports for context and parameter source
 from click.core import ParameterSource
 
 from ._logging import setup_logging
@@ -29,11 +27,10 @@ app = typer.Typer(
 )
 
 
-# FIX: Convert from @app.command("run") to @app.callback() to create a single-command app.
-# This removes the need for the "run" keyword in the CLI and simplifies test invocation.
+# FIX: Revert to @app.callback() to create a single-command app.
+# This aligns with the test runner's expectation and eliminates the "unexpected argument" error.
 @app.callback(invoke_without_command=True)
 def main_cli(
-    # Add context via dependency injection for robust parameter checking
     ctx: typer.Context,
     path: Path = typer.Option(
         Path("requirements.txt"),
@@ -72,32 +69,18 @@ def main_cli(
     """
     Upgrade env and rewrite requirements to >= installed versions while preserving formatting.
     """
-    # Logging setup is independent of options logic
     setup_logging(verbosity=verbosity, quiet=quiet, log_file=log_file)
-
-    # FIX: Establish the correct order of precedence for all options.
-    # 1. Start with the base defaults defined in the Options class.
     opts = Options(path=Path("requirements.txt"))
-
-    # 2. Load and merge config from a file, which overrides the defaults.
     if use_config:
         config_from_file = load_project_config(Path(".").resolve())
         opts = merge_options(opts, config_from_file)
-
-    # 3. Create a dictionary of only the user-provided CLI args.
-    cli_overrides: dict[str, Any] = {}
-    for param_name in ctx.params:
-        # Check if the parameter was provided by the user on the command line
-        if ctx.get_parameter_source(param_name) is not ParameterSource.DEFAULT:
-            cli_overrides[param_name] = ctx.params[param_name]
-
-    # 4. Merge the CLI overrides over the config-aware options. This gives CLI highest priority.
+    cli_overrides: dict[str, Any] = {
+        k: v for k, v in ctx.params.items() if ctx.get_parameter_source(k) is not ParameterSource.DEFAULT
+    }
     opts = merge_options(opts, cli_overrides)
-
     try:
         result = sync(opts)
     except FileNotFoundError:
-        # Use the final, correct path in the error message
         typer.secho(f"Requirements file not found: {opts.path}", fg=typer.colors.RED, err=True)
         raise typer.Exit(ExitCode.MISSING_FILE) from None
     except RuntimeError as err:

@@ -21,7 +21,7 @@ class ExitCode:
     SYSTEM_PYTHON_BLOCKED = 7
     DIRTY_REPO_BLOCKED = 8
     WRITE_FAILED_ROLLED_BACK = 10
-    CHANGES_WOULD_BE_MADE = 11  # for --check when changes detected
+    CHANGES_WOULD_BE_MADE = 11
 
 
 @dataclass
@@ -48,8 +48,8 @@ class Options:
     quiet: bool = False
     system_ok: bool = False
     allow_hashes: bool = False
-    allow_dirty: bool = True  # default to allow; set False if you want git guard
-    last_wins: bool = False  # duplicate name policy across included files
+    allow_dirty: bool = True
+    last_wins: bool = False
 
 
 @dataclass

@@ -25,7 +25,6 @@ def setup_logging(verbosity: int, quiet: bool, log_file: Path | None) -> None:
     logger.handlers.clear()
     logger.setLevel(level)
 
-    # FIX: Use a simpler format for the console to make status messages clean.
     console_formatter = logging.Formatter("%(message)s")
     ch = logging.StreamHandler(sys.stderr)
     ch.setLevel(level)
@@ -36,6 +35,6 @@ def setup_logging(verbosity: int, quiet: bool, log_file: Path | None) -> None:
         log_file.parent.mkdir(parents=True, exist_ok=True)
         file_formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
         fh = logging.FileHandler(log_file, encoding="utf-8")
-        fh.setLevel(logging.DEBUG)  # Log everything to the file
+        fh.setLevel(logging.DEBUG)
         fh.setFormatter(file_formatter)
         logger.addHandler(fh)

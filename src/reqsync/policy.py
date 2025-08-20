@@ -12,7 +12,6 @@ from ._types import Policy
 
 @dataclass
 class CapStrategy:
-    # future expansion: per-package strategy like "next-major" or "next-minor"
     default: str = "next-major"
     per_package: dict[str, str] | None = None
 
@@ -49,21 +48,16 @@ def apply_policy(
 
     floor_version = installed_version
     if v.local and not keep_local:
-        # FIX: Use v.public to correctly strip the local version segment.
         floor_version = v.public
 
-    # Build new spec according to policy
     if policy == "lower-bound":
         new_spec = f">={floor_version}"
     elif policy == "floor-only":
-        # Only raise an existing lower bound if present and lower than installed
         if not req.specifier:
             return None
-        # Find any lower bound
         lowered = False
         for sp in req.specifier:
             if sp.operator in (">=", ">", "~=", "=="):
-                # We conservatively override to >= floor_version if installed is higher
                 lowered = True
                 break
         if not lowered:
@@ -76,8 +70,6 @@ def apply_policy(
     else:
         new_spec = f">={floor_version}"
 
-    # Recompose requirement string
-    # Keep name, extras, marker; replace specifier text
     out = req.name
     if req.extras:
         out += "[" + ",".join(sorted(req.extras)) + "]"
