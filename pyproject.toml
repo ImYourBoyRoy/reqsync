@@ -5,15 +5,23 @@ build-backend = "hatchling.build"
 [project]
 name = "reqsync"
 dynamic = ["version"]
-description = "Synchronize requirements.txt to >= installed versions, safely and atomically."
+description = "Synchronize requirements.txt to match installed versions, safely and atomically."
 readme = "README.md"
 requires-python = ">=3.8"
-license = { file = "LICENSE" }
+license = { text = "MIT" }
 authors = [
   { name = "ImYourBoyRoy", email = "roy.dawson.iv@gmail.com.com" }
 ]
-keywords = ["pip", "requirements", "dependencies", "automation", "venv", "packaging"]
+keywords = [
+    "pip", "requirements", "dependencies", "automation", "venv", "packaging",
+    "agent", "ai-tool", "devops", "ci-cd", "cli-tool", "dependency-management"
+]
 classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.8",
@@ -23,9 +31,10 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Environment :: Console",
-  "License :: OSI Approved :: MIT License",
-  "Operating System :: OS Independent",
-  "Typing :: Typed"
+  "Topic :: Software Development :: Build Tools",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Utilities",
+  "Typing :: Typed",
 ]
 
 # Minimal runtime deps
@@ -50,8 +59,8 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/ImYourBoyRoy/reqsync"
-Source = "https://github.com/ImYourBoyRoy/reqsync"
-Issues = "https://github.com/ImYourBoyRoy/reqsync/issues"
+Repository = "https://github.com/ImYourBoyRoy/reqsync"
+"Bug Tracker" = "https://github.com/ImYourBoyRoy/reqsync/issues"
 
 [project.scripts]
 # Typer app exposed directly as a Click command

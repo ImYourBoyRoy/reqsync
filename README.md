@@ -28,6 +28,7 @@
 
 ## ⭐ Features
 
+* **Agent & CI Friendly**: Structured Python API and `--json-report` flag for easy integration into automated workflows.
 * Venv guard on by default; `--system-ok` to override.
 * Preserves extras `[a,b]`, markers `; sys_platform != "win32"`, inline comments, encoding (BOM), and newline style (LF/CRLF).
 * Includes recursion: follows `-r other.txt` by default.
