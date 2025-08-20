@@ -67,8 +67,4 @@ jobs:
       - name: Smoke test wheel install and CLI
         run: |
           python -m pip install --force-reinstall dist/*.whl
-          python - <<'PY'
-          import reqsync, subprocess, sys
-          print("reqsync version:", getattr(reqsync, "__version__", "unknown"))
-          subprocess.run([sys.executable, "-m", "reqsync.cli", "--help"], check=True)
-          PY
+          python -c "import reqsync, subprocess, sys; print('reqsync version:', getattr(reqsync, '__version__', 'unknown')); subprocess.run([sys.executable, '-m', 'reqsync.cli', '--help'], check=True)"
