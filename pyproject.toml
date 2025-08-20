@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Synchronize requirements.txt to >= installed versions, safely and atomically."
 readme = "README.md"
 requires-python = ">=3.8"
-license = { text = "MIT" }
+license = { file = "LICENSE" }
 authors = [
   { name = "ImYourBoyRoy", email = "roy.dawson.iv@gmail.com.com" }
 ]
