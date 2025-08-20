@@ -19,6 +19,7 @@ concurrency:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
+    environment: pypi
     env:
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
     steps:
