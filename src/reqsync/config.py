@@ -78,7 +78,7 @@ def _to_path(v: Any) -> Path | None:
 def _to_tuple(v: Any) -> tuple[str, ...]:
     if v is None:
         return ()
-    if isinstance(v, (list, tuple)):
+    if isinstance(v, (list, tuple)):  # noqa: UP038  (tuple-of-types required at runtime)
         return tuple(str(x).strip() for x in v if str(x).strip())
     if isinstance(v, str):
         return tuple(p for p in (s.strip() for s in v.split(",")) if p)
