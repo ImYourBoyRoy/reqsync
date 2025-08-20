@@ -3,18 +3,13 @@ from __future__ import annotations
 
 import json
 import logging
+
+# Best practice for conditional, version-dependent imports for mypy
+import tomllib as toml
 from pathlib import Path
 from typing import Any
 
 from ._types import Options
-
-try:
-    import tomllib as toml
-except Exception:
-    try:
-        import tomli as toml  # type: ignore[no-redef]
-    except Exception:
-        toml = None  # type: ignore[assignment]
 
 
 def _load_toml(path: Path) -> dict[str, Any]:
@@ -69,6 +64,7 @@ def _to_path(v: Any) -> Path | None:
 def _to_tuple(v: Any) -> tuple[str, ...]:
     if v is None:
         return ()
+    # Use Union for Python 3.8-3.9 compatibility
     if isinstance(v, list | tuple):
         return tuple(str(x).strip() for x in v if str(x).strip())
     if isinstance(v, str):
