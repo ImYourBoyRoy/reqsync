@@ -70,5 +70,5 @@ jobs:
           python - <<'PY'
           import reqsync, subprocess, sys
           print("reqsync version:", getattr(reqsync, "__version__", "unknown"))
-          subprocess.run([sys.executable, "-m", "reqsync.cli", "run", "--help"], check=True)
+          subprocess.run([sys.executable, "-m", "reqsync.cli", "--help"], check=True)
           PY
