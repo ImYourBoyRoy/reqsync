@@ -47,7 +47,7 @@ jobs:
         env:
           TAG_NAME: ${{ github.ref_name }}
         run: |
-          PKG_VERSION="${TAG_NAME#v}"
+          export PKG_VERSION="${TAG_NAME#v}"
           echo "Tag: ${TAG_NAME}  -> Expected version: ${PKG_VERSION}"
           python - <<'PY'
           import os, glob, subprocess, sys
