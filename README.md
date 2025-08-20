@@ -6,7 +6,7 @@
 [![License](https://img.shields.io/pypi/l/reqsync.svg)](https://opensource.org/licenses/MIT)
 [![Typing: PEP 561](https://img.shields.io/badge/Typing-PEP%20561-informational.svg)](https://peps.python.org/pep-0561/)
 
-> Upgrade a venv and rewrite requirements to `>= installed_version`, safely and atomically. Preserves extras, markers, comments, encoding, and line endings.
+> Upgrade a venv and rewrite requirements to match installed versions, safely and atomically. Preserves operators (`==`, `>=`, `~=`), extras, markers, comments, encoding, and line endings.
 
 ---
 
@@ -130,6 +130,9 @@ Examples: see [docs/CONFIG.md](docs/CONFIG.md) and `examples/`.
 * **floor-and-cap**
   Set `>= installed_version,<next_major`. Useful guardrail in larger teams.
 
+* **update-in-place**
+  Preserve the original operator (`==`, `~=`, `>=`) and only update the version. Adds `>=` if no operator is present.
+
 ---
 
 ## 📁 Includes and constraints
@@ -200,12 +203,12 @@ More integration patterns: [docs/INTEGRATION.md](docs/INTEGRATION.md).
 
 ## 🔄 How this compares
 
-| Tool             | Primary goal            | Edits your file           | Hash-aware       | Lockfile |
-| ---------------- | ----------------------- | ------------------------- | ---------------- | -------- |
-| **reqsync**      | Floor to installed (>=) | Yes, preserves formatting | Refuses or skips | No       |
-| pip-tools        | Deterministic pins      | Generates pinned file     | Yes              | Yes      |
-| pip-upgrader/pur | Bump versions           | Rewrites pins (==)        | No               | No       |
-| uv/poetry/pdm    | Env + lock mgmt         | Manage lockfiles          | Yes              | Yes      |
+| Tool             | Primary goal               | Edits your file           | Hash-aware       | Lockfile |
+| ---------------- | -------------------------- | ------------------------- | ---------------- | -------- |
+| **reqsync**      | Sync to installed versions | Yes, preserves formatting | Refuses or skips | No       |
+| pip-tools        | Deterministic pins         | Generates pinned file     | Yes              | Yes      |
+| pip-upgrader/pur | Bump versions              | Rewrites pins (==)        | No               | No       |
+| uv/poetry/pdm    | Env + lock mgmt            | Manage lockfiles          | Yes              | Yes      |
 
 Use reqsync when you want your `requirements.txt` to reflect the versions you’re actually running, while keeping future installs flexible.
 

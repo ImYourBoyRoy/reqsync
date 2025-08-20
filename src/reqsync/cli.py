@@ -18,16 +18,16 @@ class PolicyEnum(str, Enum):
     LOWER_BOUND = "lower-bound"
     FLOOR_ONLY = "floor-only"
     FLOOR_AND_CAP = "floor-and-cap"
+    UPDATE_IN_PLACE = "update-in-place"
 
 
 app = typer.Typer(
     add_completion=False,
     no_args_is_help=True,
-    help="Synchronize requirements.txt to >= installed versions safely.",
+    help="Synchronize requirements.txt to match installed versions safely.",
 )
 
 
-# FIX: Revert to @app.callback() to create a single-command app.
 # This aligns with the test runner's expectation and eliminates the "unexpected argument" error.
 @app.callback(invoke_without_command=True)
 def main_cli(
@@ -42,7 +42,7 @@ def main_cli(
     update_constraints: bool = typer.Option(False, help="Allow updating constraint files"),
     policy: PolicyEnum = typer.Option(
         PolicyEnum.LOWER_BOUND,
-        help="Policy: lower-bound | floor-only | floor-and-cap",
+        help="Policy: lower-bound | floor-only | floor-and-cap | update-in-place",
     ),
     allow_prerelease: bool = typer.Option(False, help="Adopt pre/dev versions"),
     keep_local: bool = typer.Option(False, help="Keep local version suffixes (+local)"),
@@ -67,7 +67,7 @@ def main_cli(
     use_config: bool = typer.Option(True, help="Load reqsync.toml or [tool.reqsync] from pyproject"),
 ) -> None:
     """
-    Upgrade env and rewrite requirements to >= installed versions while preserving formatting.
+    Upgrade env and rewrite requirements to match installed versions while preserving formatting.
     """
     setup_logging(verbosity=verbosity, quiet=quiet, log_file=log_file)
     opts = Options(path=Path("requirements.txt"))

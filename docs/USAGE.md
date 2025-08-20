@@ -3,7 +3,7 @@
 # reqsync — Usage
 
 ## Synopsis
-Fast, safe way to upgrade a venv and rewrite requirements.txt so each top-level package is set to `>= installed_version`. Defaults are conservative. It refuses to run outside a venv unless you say otherwise.
+Fast, safe way to upgrade a venv and rewrite requirements.txt to match the versions installed in the environment.
 
 ## Quickstart
 ```bash
@@ -22,7 +22,7 @@ reqsync run --path requirements.txt --show-diff
 1. Validates you’re in a virtualenv (unless you pass `--system-ok`).
 2. Runs `pip install -U -r <file>` by default to upgrade the env. Skip with `--no-upgrade`.
 3. Reads installed package versions.
-4. Rewrites each package line in your requirements files to set a lower bound `>=installed`, preserving extras, markers, inline comments, and file formatting.
+4. Rewrites each package line in your requirements files to match the installed version, preserving operators (per the chosen policy), extras, markers, inline comments, and file formatting.
 5. Backs up before writing, then writes atomically.
 6. Refuses to edit files that contain `--hash=` unless you opt in to skipping those stanzas.
 
@@ -66,6 +66,7 @@ reqsync run [OPTIONS]
 * `lower-bound` (default): set specifier to `>= installed`.
 * `floor-only`: only raise an existing lower bound; do not add one if missing.
 * `floor-and-cap`: set `>= installed,<next_major` (cap strategy defaults to next major).
+* `update-in-place`: preserve the original operator (`==`, `~=`, `>=`) and only update the version. Adds `>=` if no operator is present.
 
 ### Includes and constraints
 

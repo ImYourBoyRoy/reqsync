@@ -50,7 +50,22 @@ def apply_policy(
     if v.local and not keep_local:
         floor_version = v.public
 
-    if policy == "lower-bound":
+    if policy == "update-in-place":
+        if not req.specifier:
+            new_spec = f">={floor_version}"
+        else:
+            specs = []
+            updated = False
+            for sp in req.specifier:
+                if sp.operator in (">=", "~=", "=="):
+                    specs.append(f"{sp.operator}{floor_version}")
+                    updated = True
+                else:
+                    specs.append(str(sp))
+            if not updated:  # No floor specifier found, so add one.
+                specs.append(f">={floor_version}")
+            new_spec = ",".join(sorted(specs))
+    elif policy == "lower-bound":
         new_spec = f">={floor_version}"
     elif policy == "floor-only":
         if not req.specifier:

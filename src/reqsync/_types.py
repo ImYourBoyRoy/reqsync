@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, TypedDict
 
-Policy = Literal["lower-bound", "floor-only", "floor-and-cap"]
+Policy = Literal["lower-bound", "floor-only", "floor-and-cap", "update-in-place"]
 
 
 class ExitCode:

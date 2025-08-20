@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and vers
 Version numbers are derived from Git tags via `hatch-vcs` (tags must be `vX.Y.Z`).
 
 ## [Unreleased]
+### Added
+- New policy `update-in-place` to preserve original version operators (`==`, `~=`, etc.) while updating the version number.
+
 ### Planned
 - Per-package cap strategies (next-minor, calendar-based) via config.
 - Git cleanliness guard (block writes on dirty repo unless `--allow-dirty`).

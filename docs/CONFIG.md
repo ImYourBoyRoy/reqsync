@@ -67,7 +67,7 @@ allow_prerelease = false
 * `path` string. Primary requirements file.
 * `follow_includes` bool. Follow `-r` includes recursively.
 * `update_constraints` bool. Allow modifying constraint files. Off by default.
-* `policy` string. `lower-bound` | `floor-only` | `floor-and-cap`.
+* `policy` string. `lower-bound` | `floor-only` | `floor-and-cap` | `update-in-place`.
 * `allow_prerelease` bool. Adopt pre/dev versions from env.
 * `keep_local` bool. Keep local suffix `+tag`.
 * `no_upgrade` bool. Skip `pip install -U`.
