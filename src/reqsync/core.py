@@ -93,7 +93,6 @@ def _rewrite_text(
             out_lines.append(line)
             continue
 
-        # FIX: Use the original end-of-line characters instead of hardcoding "\n"
         new_line = new_content + parsed.comment + parsed.eol
         if new_line != line:
             changes.append(
@@ -118,6 +117,7 @@ def sync(options: Options) -> Result:
     Raises RuntimeError with clear messages for fatal conditions.
     """
     logging.info("Starting reqsync")
+    # This now calls the alias at the bottom of the file, which the test can patch
     ensure_venv_or_exit(options.system_ok)
     root = options.path
     logging.info("Reading %s", root)
@@ -137,12 +137,14 @@ def sync(options: Options) -> Result:
 
     if not options.no_upgrade:
         logging.info("Upgrading environment via pip (may take a while)...")
+        # This now calls the alias at the bottom of the file
         code, _ = run_pip_upgrade(str(root), timeout_sec=options.pip_timeout_sec, extra_args=options.pip_args)
         if code != 0:
             raise RuntimeError("pip install -U failed. See logs.")
         logging.info("Environment upgrade complete.")
 
     logging.info("Inspecting installed packages...")
+    # This now calls the alias at the bottom of the file
     installed = get_installed_versions()
 
     files = _resolve_includes(root, follow=options.follow_includes)
@@ -209,3 +211,4 @@ def sync(options: Options) -> Result:
 get_installed_versions = env_mod.get_installed_versions
 ensure_venv_or_exit = env_mod.ensure_venv_or_exit
 run_pip_upgrade = env_mod.run_pip_upgrade
+is_venv_active = env_mod.is_venv_active

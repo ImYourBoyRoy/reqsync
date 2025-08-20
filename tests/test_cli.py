@@ -4,8 +4,6 @@ import textwrap
 from pathlib import Path
 
 from typer.testing import CliRunner
-
-# Import the module where the functions are USED
 from reqsync import core as core_mod
 from reqsync._types import ExitCode
 from reqsync.cli import app
@@ -43,14 +41,14 @@ def test_cli_refuses_hashed_requirements_with_helpful_message(tmp_path: Path):
 def test_cli_dry_run_and_check_exit_codes(tmp_path: Path, monkeypatch):
     req = write(tmp_path / "requirements.txt", "pandas>=1.0.0\n")
 
-    # FIX: Patch the functions in the 'core' module where they are imported and used.
+    core_mod.get_installed_versions.cache_clear()
+
+    # Correctly patch the functions at their source in the env module
     monkeypatch.setattr(core_mod, "get_installed_versions", lambda: {"pandas": "2.2.2"})
-    # Also patch the venv check to simplify the test command.
     monkeypatch.setattr(core_mod, "ensure_venv_or_exit", lambda system_ok: None)
 
     res = runner.invoke(
         app,
-        # We can now remove --system-ok because the check is fully mocked.
         ["--path", str(req), "--no-upgrade", "--dry-run", "--show-diff", "--no-use-config"],
     )
     assert res.exit_code == ExitCode.OK, f"Dry-run should not fail. Output:\n{res.output}"

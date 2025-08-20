@@ -4,6 +4,7 @@
 from reqsync._types import Options
 from reqsync.core import sync
 from reqsync.io import read_text_preserve, write_text_preserve
+from reqsync import core as core_mod
 
 
 def test_preserve_bom_and_newlines_on_write(tmp_path, monkeypatch):
@@ -12,11 +13,10 @@ def test_preserve_bom_and_newlines_on_write(tmp_path, monkeypatch):
     raw = "\ufeffpandas\n".encode()  # BOM + LF; we will convert to CRLF on write
     target.write_bytes(raw.replace(b"\n", b"\r\n"))
 
-    from reqsync import env as env_mod
 
-    monkeypatch.setattr(env_mod, "is_venv_active", lambda: True)
-    monkeypatch.setattr(env_mod, "run_pip_upgrade", lambda *a, **k: (0, "skipped"))
-    monkeypatch.setattr(env_mod, "get_installed_versions", lambda: {"pandas": "2.2.2"})
+    monkeypatch.setattr(core_mod, "is_venv_active", lambda: True)
+    monkeypatch.setattr(core_mod, "run_pip_upgrade", lambda *a, **k: (0, "skipped"))
+    monkeypatch.setattr(core_mod, "get_installed_versions", lambda: {"pandas": "2.2.2"})
 
     # Run sync to cause a change
     res = sync(Options(path=target, system_ok=True, no_upgrade=True))

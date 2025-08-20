@@ -1,11 +1,13 @@
 # tests/test_env.py
 
 import subprocess
-import textwrap  # Add this import for the write helper
+import textwrap
 from pathlib import Path
 
 from typer.testing import CliRunner
 
+# FIX: Import 'env' module to patch the function where it is defined and called.
+from reqsync import core as core_mod
 from reqsync import env as env_mod
 from reqsync._types import ExitCode
 from reqsync.cli import app
@@ -22,18 +24,17 @@ def write(p: Path, content: str) -> Path:
 def test_venv_guard_blocks_without_system_ok(tmp_path: Path, monkeypatch):
     req = write(tmp_path / "requirements.txt", "pandas\n")
 
-    # This patch is correct because ensure_venv_or_exit calls is_venv_active
-    # directly within the env_mod module.
+    # FIX: Patch 'is_venv_active' in the 'env' module, which is the correct scope.
     monkeypatch.setattr(env_mod, "is_venv_active", lambda: False)
 
-    # FIX: Remove "run" and add "--no-use-config"
+    # FIX: Remove the "run" command from the arguments list to match the new single-command app structure.
     res = runner.invoke(app, ["--path", str(req), "--no-upgrade", "--no-use-config"])
 
     assert res.exit_code == ExitCode.SYSTEM_PYTHON_BLOCKED, (
-        f"Expected venv guard to block with exit {ExitCode.SYSTEM_PYTHON_BLOCKED}"
+        f"Expected venv guard to block with exit {ExitCode.SYSTEM_PYTHON_BLOCKED}, but got {res.exit_code}.\nOutput:\n{res.output}"
     )
-    # The error message from Typer goes to stderr
-    assert "virtualenv" in res.stderr.lower(), "Message should clearly explain the venv requirement"
+    # The error message from Typer goes to the output stream
+    assert "virtualenv" in res.output.lower(), "Message should clearly explain the venv requirement"
 
 
 def test_run_pip_upgrade_filters_disallowed_args(monkeypatch, tmp_path: Path):
@@ -49,7 +50,7 @@ def test_run_pip_upgrade_filters_disallowed_args(monkeypatch, tmp_path: Path):
         return R()
 
     monkeypatch.setattr(subprocess, "run", fake_run)
-    code, out = env_mod.run_pip_upgrade(
+    code, out = core_mod.run_pip_upgrade(
         str(tmp_path / "requirements.txt"),
         timeout_sec=5,
         extra_args="--index-url https://simple --bogus-flag --trusted-host pypi.org",

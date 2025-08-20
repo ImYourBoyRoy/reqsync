@@ -29,8 +29,10 @@ app = typer.Typer(
 )
 
 
-@app.command("run")
-def run(
+# FIX: Convert from @app.command("run") to @app.callback() to create a single-command app.
+# This removes the need for the "run" keyword in the CLI and simplifies test invocation.
+@app.callback(invoke_without_command=True)
+def main_cli(
     # Add context via dependency injection for robust parameter checking
     ctx: typer.Context,
     path: Path = typer.Option(
