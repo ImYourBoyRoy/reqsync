@@ -4,6 +4,7 @@ import textwrap
 from pathlib import Path
 
 from typer.testing import CliRunner
+
 from reqsync import core as core_mod
 from reqsync._types import ExitCode
 from reqsync.cli import app

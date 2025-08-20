@@ -1,10 +1,11 @@
 # tests/test_io.py
 
 
+from reqsync import core as core_mod
 from reqsync._types import Options
 from reqsync.core import sync
 from reqsync.io import read_text_preserve, write_text_preserve
-from reqsync import core as core_mod
+
 
 def test_preserve_bom_and_newlines_on_write(tmp_path, monkeypatch):
     # Create a file with BOM and CRLF endings
