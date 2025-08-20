@@ -9,9 +9,9 @@ from pathlib import Path
 
 from packaging.utils import canonicalize_name
 
+from . import env as env_mod
 from . import report as report_mod
 from ._types import Change, FileChange, Options, Result
-from .env import ensure_venv_or_exit, get_installed_versions, run_pip_upgrade
 from .io import backup_file, read_text_preserve, write_text_preserve
 from .parse import find_constraints, find_includes, guard_hashes, parse_line
 from .policy import CapStrategy, apply_policy
@@ -201,3 +201,11 @@ def sync(options: Options) -> Result:
     diff = report_mod.make_diff(file_results) if changed and options.show_diff else None
     logging.info("Reqsync process finished.")
     return Result(changed=changed, files=file_results, diff=diff, backup_paths=backups)
+
+
+# --- Back-compat test shims ---------------------------------------------------
+# Tests (and possibly external callers) patch these names on the core module.
+# Keep them as aliases to the env module so monkeypatching still works.
+get_installed_versions = env_mod.get_installed_versions
+ensure_venv_or_exit = env_mod.ensure_venv_or_exit
+run_pip_upgrade = env_mod.run_pip_upgrade
