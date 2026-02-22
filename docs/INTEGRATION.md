@@ -1,149 +1,75 @@
-# docs/INTEGRATION.md
-
 # reqsync — Integration Guide
 
 ## Synopsis
-Use the Python API for automation and agents. It returns a structured `Result` with file diffs and changes. Keep the runtime dependencies small so it’s easy to embed.
+`reqsync` supports direct Python embedding, CLI automation, and a built-in MCP server for local AI model clients.
 
 ## Python API
+
 ```python
-# Minimal example
-from pathlib import Path
-from reqsync._types import Options
-from reqsync.core import sync
+from reqsync.api import run_sync_payload
 
-opts = Options(
-    path=Path("requirements.txt"),
-    allow_prerelease=False,
-    follow_includes=True,
-    policy="lower-bound",
-    dry_run=True,
-    show_diff=True,
-)
-result = sync(opts)
-print("Changed:", result.changed)
-print(result.diff or "")
-````
+payload = {
+    "path": "requirements.txt",
+    "dry_run": True,
+    "no_upgrade": True,
+    "show_diff": True,
+    "policy": "lower-bound",
+}
+result = run_sync_payload(payload)
+print(result["changed"])
+```
 
-### Result object
+Returned keys:
 
-* `changed: bool` whether any file would change
-* `files: List[FileChange]` for each processed file:
+- `changed: bool`
+- `files: list[{file, role, changed, change_count}]`
+- `changes: list[{file, package, installed_version, old_line, new_line}]`
+- `backup_paths: list[str]`
+- `diff: str | null`
 
-  * `file: Path`
-  * `original_text: str`
-  * `new_text: str`
-  * `changes: List[Change]` with `package`, `installed_version`, `old_line`, `new_line`
-* `diff: Optional[str]` unified diff if requested
-* `backup_paths: List[Path]` written when changes are applied
-
-## Using as a subprocess (shell)
+## CLI as subprocess
 
 ```bash
-# Preview and get JSON changes for tooling
-reqsync run --dry-run --json-report .artifacts/reqsync.json --show-diff
+reqsync run --no-upgrade --dry-run --json-report .artifacts/reqsync.json --show-diff
 ```
 
-## CrewAI/AG2 tool adapter
+## MCP server
 
-Keep it dead simple: pass options and parse JSON.
+### Start server
 
-```python
-# tools/reqsync_tool.py
-from pathlib import Path
-import json
-import subprocess, sys
+```bash
+# stdio transport (default)
+reqsync mcp
 
-def run_reqsync(path="requirements.txt", dry_run=True, show_diff=True, allow_prerelease=False):
-    cmd = [
-        sys.executable, "-m", "reqsync.cli", "run",
-        "--path", path,
-        "--dry-run" if dry_run else "",
-        "--show-diff" if show_diff else "",
-        "--allow-prerelease" if allow_prerelease else "",
-        "--json-report", ".artifacts/reqsync.json",
-    ]
-    cmd = [c for c in cmd if c != ""]
-    subprocess.run(cmd, check=True)
-    with open(".artifacts/reqsync.json", "r", encoding="utf-8") as f:
-        return json.load(f)
+# alternate transport
+reqsync mcp --transport sse
 ```
 
-Use in an agent step to assert the repo is clean or to propose changes.
+### Exposed tool
 
-## Minimal MCP tool concept
+- `reqsync_sync`
+  - Input params: `path`, `dry_run`, `check`, `show_diff`, `no_upgrade`, `policy`, `follow_includes`, `update_constraints`, `allow_prerelease`, `keep_local`, `allow_hashes`, `system_ok`, `allow_dirty`, `pip_args`, `pip_timeout_sec`
+  - Return shape: `{ "ok": bool, "exit_code": int, "error": str|null, "result": JsonResult|null }`
 
-Expose one command that accepts a JSON options payload and returns the JSON report plus a diff preview.
+## CI patterns
 
-Request schema (example):
+### Drift check
 
-```json
-{
-  "path": "requirements.txt",
-  "dry_run": true,
-  "check": false,
-  "allow_prerelease": false,
-  "policy": "lower-bound"
-}
+```bash
+reqsync run --check --no-upgrade --path requirements.txt
 ```
 
-Response structure:
+### Suggested pipeline steps
 
-```json
-{
-  "changed": true,
-  "diff": "@@ ...",
-  "changes": [
-    {"file": "requirements.txt", "package": "pandas", "installed_version": "2.2.2", "old_line": "pandas>=2.0.0", "new_line": "pandas>=2.2.2"}
-  ]
-}
-```
+1. `ruff check .`
+2. `ruff format --check .`
+3. `mypy src/reqsync`
+4. `pytest -q`
+5. `python -m build`
+6. `python -m twine check dist/*`
 
-Implementation notes:
+## Operational tips
 
-* Call the Python API directly (`sync(Options(...))`) for in-process serving.
-* Or invoke the CLI with `--json-report` and read the file.
-* Timebox runs if you allow `--no-upgrade=false` to avoid long resolver waits.
-
-## CI integration
-
-### GitHub Actions gate (already provided)
-
-Use `--check --no-upgrade` to enforce the file is in sync without modifying anything:
-
-```yaml
-- name: Enforce reqsync
-  run: |
-    reqsync run --check --no-upgrade --path requirements.txt
-```
-
-### Pre-commit hook
-
-```yaml
-# .pre-commit-config.yaml
-repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.5.7
-    hooks:
-      - id: ruff
-      - id: ruff-format
-  - repo: local
-    hooks:
-      - id: reqsync
-        name: reqsync (sync floors)
-        entry: reqsync run --no-upgrade
-        language: system
-        pass_filenames: false
-```
-
-## Safety reminders for integrators
-
-* Default refuses to run outside a venv. Use `system_ok=True` only if you know what you’re doing.
-* Hashed files are blocked by default. If you enable `--allow-hashes`, reqsync will skip those stanzas, not fix them.
-* Atomic writes with backups mean you can run in CI safely. If a write fails, reqsync rolls back and returns a nonzero exit.
-
-## Performance tips
-
-* For large envs, prefer `--no-upgrade` in read-only checks.
-* If you must pass pip mirrors, use `--pip-args` with allowlisted flags only.
-* Avoid scanning massive include trees unless you need to; set `--no-follow-includes` for single-file speed.
+- Prefer `--no-upgrade` in CI for deterministic speed.
+- Use `--stdout-json` or `--json-report` for agent orchestration.
+- Keep `--allow-hashes` disabled unless you intentionally want hash lines skipped.

@@ -1,7 +1,13 @@
-# tests/test_env.py
+# ./tests/test_env.py
+"""Environment helper tests for reqsync.
+
+Validates virtualenv safety checks and pip-arg filtering behavior used by the
+core orchestration layer.
+"""
+
+from __future__ import annotations
 
 import subprocess
-import textwrap
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -14,47 +20,52 @@ from reqsync.cli import app
 runner = CliRunner()
 
 
-def write(p: Path, content: str) -> Path:
-    """Helper to write dedented content to a file."""
-    text = textwrap.dedent(content).lstrip("\n")
-    p.write_text(text, encoding="utf-8")
-    return p
-
-
-def test_venv_guard_blocks_without_system_ok(tmp_path: Path, monkeypatch):
-    req = write(tmp_path / "requirements.txt", "pandas\n")
+def test_venv_guard_blocks_without_system_ok(tmp_path: Path, monkeypatch) -> None:
+    req = tmp_path / "requirements.txt"
+    req.write_text("pandas\n", encoding="utf-8")
 
     monkeypatch.setattr(env_mod, "is_venv_active", lambda: False)
 
-    # FIX: Remove the "run" command from the invoke call.
-    res = runner.invoke(app, ["--path", str(req), "--no-upgrade", "--no-use-config"])
-
-    assert res.exit_code == ExitCode.SYSTEM_PYTHON_BLOCKED, (
-        f"Expected venv guard to block with exit {ExitCode.SYSTEM_PYTHON_BLOCKED}, but got {res.exit_code}.\n"
-        f"Output:\n{res.output}"
-    )
-    assert "virtualenv" in res.output.lower(), "Message should clearly explain the venv requirement"
+    result = runner.invoke(app, ["run", "--path", str(req), "--no-upgrade", "--no-use-config"])
+    assert result.exit_code == int(ExitCode.SYSTEM_PYTHON_BLOCKED)
+    assert "virtualenv" in result.output.lower()
 
 
-def test_run_pip_upgrade_filters_disallowed_args(monkeypatch, tmp_path: Path):
-    captured = {}
+def test_run_pip_upgrade_filters_disallowed_args(monkeypatch, tmp_path: Path) -> None:
+    captured: dict[str, list[str]] = {}
 
     def fake_run(*args, **kwargs):
         captured["cmd"] = args[0]
 
-        class R:
+        class Response:
             returncode = 0
             stdout = "ok"
 
-        return R()
+        return Response()
 
     monkeypatch.setattr(subprocess, "run", fake_run)
+
     code, out = core_mod.run_pip_upgrade(
         str(tmp_path / "requirements.txt"),
         timeout_sec=5,
         extra_args="--index-url https://simple --bogus-flag --trusted-host pypi.org",
     )
+
     assert code == 0 and out == "ok"
     sent = " ".join(captured["cmd"])
     assert "--index-url" in sent and "--trusted-host" in sent
     assert "--bogus-flag" not in sent
+
+
+def test_git_dirty_detects_when_status_has_output(monkeypatch, tmp_path: Path) -> None:
+    git_dir = tmp_path / ".git"
+    git_dir.mkdir(parents=True)
+
+    class FakeProc:
+        returncode = 0
+        stdout = " M README.md\n"
+        stderr = ""
+
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: FakeProc())
+
+    assert env_mod.is_git_dirty(tmp_path) is True

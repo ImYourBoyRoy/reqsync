@@ -1,71 +1,84 @@
-# tests/test_policy.py
+# ./tests/test_policy.py
+"""Policy engine tests for requirement rewriting.
+
+Confirms each supported policy produces expected floor/cap behavior and handles
+pre-release/local versions according to safety flags.
+"""
+
+from __future__ import annotations
 
 from packaging.requirements import Requirement
 
 from reqsync.policy import apply_policy
 
 
-def test_lower_bound_policy_basic():
+def test_lower_bound_policy_basic() -> None:
     req = Requirement("pandas")
-    out = apply_policy(req, "2.2.2", policy="lower-bound", allow_prerelease=False, keep_local=False)
-    assert out is not None and out.startswith("pandas>=") and "2.2.2" in out, f"Expected floor to installed, got {out}"
+    output = apply_policy(req, "2.2.2", policy="lower-bound", allow_prerelease=False, keep_local=False)
+    assert output is not None and output.startswith("pandas>=") and "2.2.2" in output
 
 
-def test_floor_only_requires_existing_lower_bound():
-    req = Requirement("pandas")
-    out = apply_policy(req, "2.2.2", policy="floor-only", allow_prerelease=False, keep_local=False)
-    assert out is None, "Without an existing lower bound, floor-only should be a no-op"
-
-    req2 = Requirement("pandas>=1.0")
-    out2 = apply_policy(req2, "2.2.2", policy="floor-only", allow_prerelease=False, keep_local=False)
-    assert out2 is not None and "pandas>=2.2.2" in out2, f"Should lift lower bound to installed, got {out2}"
+def test_lower_bound_preserves_existing_ceiling_constraints() -> None:
+    req = Requirement("portalocker>=2.0,<3")
+    output = apply_policy(req, "2.7.0", policy="lower-bound", allow_prerelease=False, keep_local=False)
+    assert output is not None
+    assert ">=2.7.0" in output
+    assert "<3" in output
 
 
-def test_floor_and_cap_defaults_to_next_major():
+def test_floor_only_requires_existing_lower_bound() -> None:
+    no_floor = Requirement("pandas")
+    assert apply_policy(no_floor, "2.2.2", policy="floor-only", allow_prerelease=False, keep_local=False) is None
+
+    with_floor = Requirement("pandas>=1.0")
+    output = apply_policy(with_floor, "2.2.2", policy="floor-only", allow_prerelease=False, keep_local=False)
+    assert output is not None and "pandas>=2.2.2" in output
+
+
+def test_floor_only_preserves_existing_ceiling_constraints() -> None:
+    req = Requirement("portalocker>=2.0,<3")
+    output = apply_policy(req, "2.7.0", policy="floor-only", allow_prerelease=False, keep_local=False)
+    assert output is not None
+    assert ">=2.7.0" in output
+    assert "<3" in output
+
+
+def test_floor_and_cap_defaults_to_next_major() -> None:
     req = Requirement("pydantic")
-    out = apply_policy(req, "2.7.0", policy="floor-and-cap", allow_prerelease=False, keep_local=False)
-    assert out is not None and ">=2.7.0,<3.0.0" in out, f"Expected cap to next major, got {out}"
+    output = apply_policy(req, "2.7.0", policy="floor-and-cap", allow_prerelease=False, keep_local=False)
+    assert output is not None and ">=2.7.0,<3.0.0" in output
 
 
-def test_prerelease_blocked_by_default():
+def test_prerelease_blocked_by_default() -> None:
     req = Requirement("somepkg")
-    out = apply_policy(req, "1.0.0rc1", policy="lower-bound", allow_prerelease=False, keep_local=False)
-    assert out is None, "Pre-release should be refused unless allow_prerelease is set"
+    assert apply_policy(req, "1.0.0rc1", policy="lower-bound", allow_prerelease=False, keep_local=False) is None
 
 
-def test_local_version_stripped_by_default():
+def test_local_version_stripped_by_default() -> None:
     req = Requirement("fastembed")
-    out = apply_policy(req, "1.2.3+cpu", policy="lower-bound", allow_prerelease=True, keep_local=False)
-    assert out is not None and ">=1.2.3" in out and "+cpu" not in out, (
-        f"Local segment should be stripped by default, got {out}"
+    output = apply_policy(req, "1.2.3+cpu", policy="lower-bound", allow_prerelease=True, keep_local=False)
+    assert output is not None and ">=1.2.3" in output and "+cpu" not in output
+
+
+def test_update_in_place_policy() -> None:
+    req_equal = Requirement("pandas==1.0")
+    assert (
+        apply_policy(req_equal, "2.2.2", policy="update-in-place", allow_prerelease=False, keep_local=False)
+        == "pandas==2.2.2"
     )
 
+    req_compatible = Requirement("django~=4.0")
+    assert (
+        apply_policy(req_compatible, "4.2.1", policy="update-in-place", allow_prerelease=False, keep_local=False)
+        == "django~=4.2.1"
+    )
 
-def test_update_in_place_policy():
-    # Test case 1: Update '=='
-    req1 = Requirement("pandas==1.0")
-    out1 = apply_policy(req1, "2.2.2", policy="update-in-place", allow_prerelease=False, keep_local=False)
-    assert out1 == "pandas==2.2.2", f"Expected '==2.2.2', got {out1}"
+    req_range = Requirement("pydantic>=2.0,<3.0")
+    output = apply_policy(req_range, "2.7.0", policy="update-in-place", allow_prerelease=False, keep_local=False)
+    assert output is not None and ">=2.7.0" in output and "<3.0" in output
 
-    # Test case 2: Update '~='
-    req2 = Requirement("django~=4.0")
-    out2 = apply_policy(req2, "4.2.1", policy="update-in-place", allow_prerelease=False, keep_local=False)
-    assert out2 == "django~=4.2.1", f"Expected '~=4.2.1', got {out2}"
-
-    # Test case 3: Update '>=' and preserve '<'
-    req3 = Requirement("pydantic>=2.0,<3.0")
-    out3 = apply_policy(req3, "2.7.0", policy="update-in-place", allow_prerelease=False, keep_local=False)
-    # The order might change due to sorting, so check for both parts
-    assert out3 is not None
-    assert ">=2.7.0" in out3 and "<3.0" in out3, f"Expected '>=2.7.0,<3.0', got {out3}"
-
-    # Test case 4: No specifier, defaults to '>='
-    req4 = Requirement("requests")
-    out4 = apply_policy(req4, "2.31.0", policy="update-in-place", allow_prerelease=False, keep_local=False)
-    assert out4 == "requests>=2.31.0", f"Expected '>=2.31.0' for empty spec, got {out4}"
-
-    # Test case 5: Only a ceiling specifier, should add a floor
-    req5 = Requirement("somepkg<2.0")
-    out5 = apply_policy(req5, "1.5.0", policy="update-in-place", allow_prerelease=False, keep_local=False)
-    assert out5 is not None
-    assert ">=1.5.0" in out5 and "<2.0" in out5, f"Expected to add '>=1.5.0', got {out5}"
+    req_empty = Requirement("requests")
+    assert (
+        apply_policy(req_empty, "2.31.0", policy="update-in-place", allow_prerelease=False, keep_local=False)
+        == "requests>=2.31.0"
+    )

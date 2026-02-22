@@ -1,21 +1,18 @@
-# docs/CONFIG.md
-
 # reqsync — Configuration
 
 ## Synopsis
-Config is optional. Command-line flags always win. If you use config, keep it small and explicit.
+Configuration is optional. CLI flags always override config values.
 
-## Where config is read from
-Resolution order (earlier wins):
+## Resolution order
 1. CLI flags
-2. `reqsync.toml` at project root
+2. `reqsync.toml`
 3. `[tool.reqsync]` in `pyproject.toml`
-4. `reqsync.json` at project root
-5. Built-in defaults
+4. `reqsync.json`
+5. Defaults
 
-## reqsync.toml example
+## `reqsync.toml` example
+
 ```toml
-# reqsync.toml
 path = "requirements.txt"
 follow_includes = true
 update_constraints = false
@@ -33,6 +30,8 @@ show_diff = false
 json_report = ""
 backup_suffix = ".bak"
 timestamped_backups = true
+backup_keep_last = 5
+lock_timeout_sec = 15
 log_file = ""
 verbosity = 0
 quiet = false
@@ -40,60 +39,37 @@ system_ok = false
 allow_hashes = false
 allow_dirty = true
 last_wins = false
-````
+```
 
-## pyproject.toml example
+## `pyproject.toml` example
 
 ```toml
 [tool.reqsync]
 path = "requirements.txt"
-policy = "lower-bound"
-allow_prerelease = false
+policy = "floor-and-cap"
+no_upgrade = true
+show_diff = true
 ```
 
-## JSON example
+## `reqsync.json` example
 
 ```json
 {
-  "path": "requirements.in",
-  "policy": "floor-and-cap",
-  "allow_prerelease": true,
-  "only": ["langchain*", "crewai"]
+  "path": "requirements/base.txt",
+  "policy": "update-in-place",
+  "dry_run": true,
+  "show_diff": true
 }
 ```
 
-## Field reference
+## Field notes
 
-* `path` string. Primary requirements file.
-* `follow_includes` bool. Follow `-r` includes recursively.
-* `update_constraints` bool. Allow modifying constraint files. Off by default.
-* `policy` string. `lower-bound` | `floor-only` | `floor-and-cap` | `update-in-place`.
-* `allow_prerelease` bool. Adopt pre/dev versions from env.
-* `keep_local` bool. Keep local suffix `+tag`.
-* `no_upgrade` bool. Skip `pip install -U`.
-* `pip_timeout_sec` int. Timeout for pip upgrade.
-* `pip_args` string. Allowlisted args only (`--index-url`, `--extra-index-url`, `--find-links`, `--trusted-host`, `--proxy`, `--retries`, `--timeout`, `-r`, `-c`).
-* `only` array of globs. Limit which packages are updated.
-* `exclude` array of globs. Exclude packages from updating.
-* `check` bool. Don’t write; exit 11 if changes would be made.
-* `dry_run` bool. Don’t write. With `show_diff` for preview.
-* `show_diff` bool. Print unified diff for changed files.
-* `json_report` string. Output file for machine-readable changes.
-* `backup_suffix` string. Suffix for backup file.
-* `timestamped_backups` bool. Timestamp your backups.
-* `log_file` string. Optional file log. Empty disables.
-* `verbosity` int. 0 warn, 1 info, 2 debug (CLI `-v` `-vv` overrides).
-* `quiet` bool. Suppress info/debug to console.
-* `system_ok` bool. Allow running outside a venv.
-* `allow_hashes` bool. Skip `--hash` stanzas instead of refusing.
-* `allow_dirty` bool. If you add a git-guard later, this toggles it.
-* `last_wins` bool. Resolve duplicates across includes with last occurrence.
+- `policy`: `lower-bound`, `floor-only`, `floor-and-cap`, `update-in-place`
+- `pip_args`: allowlisted options only (`--index-url`, `--extra-index-url`, `--trusted-host`, `--find-links`, `--proxy`, `--retries`, `--timeout`, `-r`, `--requirement`, `-c`, `--constraint`, `--no-deps`)
+- `only` / `exclude`: package globs (comma string or list)
+- `backup_keep_last`: max timestamped backups to retain per file (`0` disables pruning)
+- `lock_timeout_sec`: lock wait timeout before exiting code `9`
 
-## Precedence rules
+## Security note
 
-* CLI overrides config. Example: `--allow-prerelease` beats config false.
-* Empty strings in config are treated as unset. Arrays are used verbatim.
-
-## Hard truths
-
-* Don’t put secrets in config. If you’re passing index URLs with creds, prefer `PIP_INDEX_URL` env vars or a pip config file. If you must use `--pip-args`, logs redact common token shapes, but don’t rely on that as security.
+Avoid storing secrets directly in project config. Prefer environment variables or pip config for credentials.

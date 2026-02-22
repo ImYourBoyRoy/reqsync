@@ -1,4 +1,12 @@
-# examples/api_minimal.py
+# ./examples/api_minimal.py
+"""Minimal reqsync API usage example.
+
+Run with: `python examples/api_minimal.py`
+Inputs: local requirements file, installed environment packages.
+Outputs: prints changed flag and optional diff preview; performs no writes.
+"""
+
+from __future__ import annotations
 
 from pathlib import Path
 
@@ -7,15 +15,15 @@ from reqsync.core import sync
 
 
 def main() -> None:
-    opts = Options(
+    options = Options(
         path=Path("requirements.txt"),
         follow_includes=True,
         policy="lower-bound",
         dry_run=True,
         show_diff=True,
-        no_upgrade=True,  # read-only check against current env
+        no_upgrade=True,
     )
-    result = sync(opts)
+    result = sync(options)
     print("Changed:", result.changed)
     if result.diff:
         print(result.diff)

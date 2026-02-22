@@ -1,36 +1,48 @@
-# tests/test_io.py
+# ./tests/test_parse.py
+"""Requirements parsing behavior tests.
+
+Validates line classification and linked-file discovery to keep rewrite behavior
+predictable across directives, package lines, and hash-protected stanzas.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from reqsync.errors import HashPinsPresentError
+from reqsync.parse import find_file_links, guard_hashes, parse_line
 
 
-from reqsync import core as core_mod
-from reqsync._types import Options
-from reqsync.core import sync
-from reqsync.io import read_text_preserve, write_text_preserve
+def test_parse_line_classifies_package_and_preserves_comment() -> None:
+    parsed = parse_line('pandas>=1.0 # keep me\n')
+    assert parsed.kind == "package"
+    assert parsed.requirement is not None
+    assert parsed.comment == " # keep me"
+    assert parsed.eol == "\n"
 
 
-def test_preserve_bom_and_newlines_on_write(tmp_path, monkeypatch):
-    # Create a file with BOM and CRLF endings
-    target = tmp_path / "requirements.txt"
-    raw = "\ufeffpandas\n".encode()  # BOM + LF; we will convert to CRLF on write
-    target.write_bytes(raw.replace(b"\n", b"\r\n"))
+def test_parse_line_classifies_directives_and_hashes() -> None:
+    directive = parse_line("--index-url https://pypi.org/simple\n")
+    hashed = parse_line("requests==2.31.0 --hash=sha256:abc\n")
 
-    monkeypatch.setattr(core_mod, "is_venv_active", lambda: True)
-    monkeypatch.setattr(core_mod, "run_pip_upgrade", lambda *a, **k: (0, "skipped"))
-    monkeypatch.setattr(core_mod, "get_installed_versions", lambda: {"pandas": "2.2.2"})
-
-    # Run sync to cause a change
-    res = sync(Options(path=target, system_ok=True, no_upgrade=True))
-    assert res.changed, "A change should have been applied"
-
-    # Verify BOM and CRLF preserved
-    data = target.read_bytes()
-    assert data.startswith(b"\xef\xbb\xbf"), "BOM must be preserved"
-    assert b"\r\n" in data and b"\n" not in data.replace(b"\r\n", b""), "CRLF endings must be preserved"
+    assert directive.kind == "directive"
+    assert hashed.kind == "hashed"
 
 
-def test_read_write_roundtrip_preserves_format(tmp_path):
-    p = tmp_path / "x.txt"
-    p.write_bytes(b"\xef\xbb\xbfline1\r\nline2\r\n")  # BOM + CRLF
-    text, nl, bom = read_text_preserve(p)
-    assert nl == "\r\n" and bom is True
-    write_text_preserve(p, text, bom)
-    assert p.read_bytes().startswith(b"\xef\xbb\xbf"), "Round-trip should preserve BOM"
+def test_find_file_links_extracts_include_and_constraint_paths() -> None:
+    lines = [
+        "-r requirements/base.txt\n",
+        "--constraint requirements/constraints.txt # pinned\n",
+    ]
+    refs = find_file_links(lines)
+
+    assert len(refs) == 2
+    assert refs[0].kind == "requirement" and refs[0].path == "requirements/base.txt"
+    assert refs[1].kind == "constraint" and refs[1].path == "requirements/constraints.txt"
+
+
+def test_guard_hashes_raises_without_allow_hashes() -> None:
+    with pytest.raises(HashPinsPresentError):
+        guard_hashes(["requests==2.31.0 --hash=sha256:abc"], allow_hashes=False)
+
+    guard_hashes(["requests==2.31.0 --hash=sha256:abc"], allow_hashes=True)

@@ -1,4 +1,9 @@
-# src/reqsync/_logging.py
+# ./src/reqsync/_logging.py
+"""Logging setup utilities for reqsync CLI and programmatic runners.
+
+Configures concise console logs by default, optional debug verbosity, and an
+optional structured file sink for troubleshooting long-running sync jobs.
+"""
 
 from __future__ import annotations
 
@@ -8,10 +13,8 @@ from pathlib import Path
 
 
 def setup_logging(verbosity: int, quiet: bool, log_file: Path | None) -> None:
-    """
-    Configure root logger with console and optional file sink.
-    Verbosity: 0 WARNING, 1 INFO, 2+ DEBUG. Quiet forces WARNING.
-    """
+    """Configure root logging based on CLI verbosity flags."""
+
     if quiet:
         level = logging.WARNING
     elif verbosity >= 2:
@@ -21,20 +24,21 @@ def setup_logging(verbosity: int, quiet: bool, log_file: Path | None) -> None:
     else:
         level = logging.WARNING
 
-    logger = logging.getLogger()
-    logger.handlers.clear()
-    logger.setLevel(level)
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.setLevel(level)
 
-    console_formatter = logging.Formatter("%(message)s")
-    ch = logging.StreamHandler(sys.stderr)
-    ch.setLevel(level)
-    ch.setFormatter(console_formatter)
-    logger.addHandler(ch)
+    console = logging.StreamHandler(sys.stderr)
+    console.setLevel(level)
+    console.setFormatter(logging.Formatter("%(message)s"))
+    root.addHandler(console)
 
     if log_file:
         log_file.parent.mkdir(parents=True, exist_ok=True)
-        file_formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
-        fh = logging.FileHandler(log_file, encoding="utf-8")
-        fh.setLevel(logging.DEBUG)
-        fh.setFormatter(file_formatter)
-        logger.addHandler(fh)
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
+        root.addHandler(file_handler)
+
+
+__all__ = ["setup_logging"]

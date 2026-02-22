@@ -1,78 +1,96 @@
-# .gitignore
-
-# ---------------------
-# Python bytecode/caches
-# ---------------------
+# Python bytecode / cache
 __pycache__/
 *.py[cod]
 *$py.class
-.pyre/
-.pytype/
-.mypy_cache/
-.ruff_cache/
-.pytest_cache/
-.cache/
 
-# ---------------------
+# Native extensions
+*.so
+
+# Packaging / build artifacts
+.Python
+build/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+wheelhouse/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-wheel-metadata/
+
 # Virtual environments
-# ---------------------
 .venv/
 venv/
 env/
+ENV/
 .conda/
 conda-env/
+env.bak/
+venv.bak/
 
-# ---------------------
-# Distribution / packaging
-# ---------------------
-build/
-dist/
-wheelhouse/
-*.egg-info/
-*.egg
-pip-wheel-metadata/
-.installed.cfg
-
-# ---------------------
-# Test/coverage artifacts
-# ---------------------
+# Testing / coverage
+.pytest_cache/
 .coverage
 .coverage.*
 htmlcov/
-coverage.xml
-pytestdebug.log
 .tox/
 .nox/
 .hypothesis/
+.cache/
+coverage.xml
+pytestdebug.log
+nosetests.xml
+*.cover
+*.py,cover
+cover/
 
-# ---------------------
-# IDE/editor/OS files
-# ---------------------
+# Static analysis / lint caches
+.mypy_cache/
+.pyre/
+.pytype/
+.ruff_cache/
+.dmypy.json
+dmypy.json
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Local environment / secrets
+.env
+.env.*
+!.env.example
+.envrc
+.python-version
+
+# Logs and runtime artifacts
+*.log
+*.pid
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
 .vscode/
 .idea/
 *.iml
 *.code-workspace
-.DS_Store
-Thumbs.db
 
-# ---------------------
-# Logs and local env
-# ---------------------
-*.log
-.env
-.env.*
-.envrc
-
-# ---------------------
-# Reqsync artifacts/backups
-# ---------------------
+# Reqsync-specific artifacts
 .artifacts/
 *.bak
 *.bak.*
 requirements*.bak
 reqsync-*.tmp
+.*.reqsync.lock
 
-# ---------------------
-# Node or misc (in case of mixed repos)
-# ---------------------
+# Optional mixed-repo artifacts
 node_modules/

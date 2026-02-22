@@ -1,36 +1,66 @@
-# tests/test_io.py
+# ./tests/test_io.py
+"""Encoding and newline preservation tests.
 
+Ensures reqsync keeps UTF-8 BOM and original line-ending style during rewrites
+and direct read/write round-trips.
+"""
+
+from __future__ import annotations
 
 from reqsync import core as core_mod
 from reqsync._types import Options
 from reqsync.core import sync
-from reqsync.io import read_text_preserve, write_text_preserve
+from reqsync.io import backup_file, read_text_preserve, write_text_preserve
 
 
-def test_preserve_bom_and_newlines_on_write(tmp_path, monkeypatch):
-    # Create a file with BOM and CRLF endings
+def test_preserve_bom_and_newlines_on_write(tmp_path, monkeypatch) -> None:
     target = tmp_path / "requirements.txt"
-    raw = "\ufeffpandas\n".encode()  # BOM + LF; we will convert to CRLF on write
+    raw = "\ufeffpandas\n".encode()
     target.write_bytes(raw.replace(b"\n", b"\r\n"))
 
-    monkeypatch.setattr(core_mod, "is_venv_active", lambda: True)
-    monkeypatch.setattr(core_mod, "run_pip_upgrade", lambda *a, **k: (0, "skipped"))
+    monkeypatch.setattr(core_mod, "ensure_venv_or_exit", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(core_mod, "ensure_git_clean_or_exit", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(core_mod, "run_pip_upgrade", lambda *_args, **_kwargs: (0, "skipped"))
     monkeypatch.setattr(core_mod, "get_installed_versions", lambda: {"pandas": "2.2.2"})
 
-    # Run sync to cause a change
-    res = sync(Options(path=target, system_ok=True, no_upgrade=True))
-    assert res.changed, "A change should have been applied"
+    result = sync(Options(path=target, system_ok=True, no_upgrade=True))
+    assert result.changed
 
-    # Verify BOM and CRLF preserved
     data = target.read_bytes()
-    assert data.startswith(b"\xef\xbb\xbf"), "BOM must be preserved"
-    assert b"\r\n" in data and b"\n" not in data.replace(b"\r\n", b""), "CRLF endings must be preserved"
+    assert data.startswith(b"\xef\xbb\xbf")
+    assert b"\r\n" in data and b"\n" not in data.replace(b"\r\n", b"")
 
 
-def test_read_write_roundtrip_preserves_format(tmp_path):
-    p = tmp_path / "x.txt"
-    p.write_bytes(b"\xef\xbb\xbfline1\r\nline2\r\n")  # BOM + CRLF
-    text, nl, bom = read_text_preserve(p)
-    assert nl == "\r\n" and bom is True
-    write_text_preserve(p, text, bom)
-    assert p.read_bytes().startswith(b"\xef\xbb\xbf"), "Round-trip should preserve BOM"
+def test_read_write_roundtrip_preserves_format(tmp_path) -> None:
+    path = tmp_path / "x.txt"
+    path.write_bytes(b"\xef\xbb\xbfline1\r\nline2\r\n")
+
+    text, newline, bom = read_text_preserve(path)
+    assert newline == "\r\n" and bom is True
+
+    write_text_preserve(path, text, bom)
+    assert path.read_bytes().startswith(b"\xef\xbb\xbf")
+
+
+def test_timestamped_backup_pruning_keeps_recent_files(tmp_path) -> None:
+    target = tmp_path / "requirements.txt"
+    target.write_text("requests>=2.0\n", encoding="utf-8")
+
+    for i in range(6):
+        target.write_text(f"requests>={i}.0\n", encoding="utf-8")
+        backup_file(target, suffix=".bak", timestamped=True, keep_last=3)
+
+    backups = sorted(tmp_path.glob("requirements.txt.bak.*"))
+    assert len(backups) == 3
+
+
+def test_timestamped_backup_pruning_can_be_disabled(tmp_path) -> None:
+    target = tmp_path / "requirements.txt"
+    target.write_text("requests>=2.0\n", encoding="utf-8")
+
+    for i in range(4):
+        target.write_text(f"requests>={i}.0\n", encoding="utf-8")
+        backup_file(target, suffix=".bak", timestamped=True, keep_last=0)
+
+    backups = sorted(tmp_path.glob("requirements.txt.bak.*"))
+    assert len(backups) == 4

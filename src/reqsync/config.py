@@ -1,121 +1,164 @@
-# src/reqsync/config.py
+# ./src/reqsync/config.py
+"""Configuration loading and option-merging for reqsync.
+
+Supports optional project config from reqsync.toml, pyproject.toml, and
+reqsync.json. CLI values remain highest priority, followed by config values,
+then built-in dataclass defaults.
+"""
+
 from __future__ import annotations
 
 import importlib
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-from ._types import Options
+from ._types import Options, Policy
 
 
-# Dynamically import tomllib (3.11+) or fall back to tomli; avoid static imports so mypy won't
-# require stubs for tomllib on older interpreters.
 def _import_toml_like() -> Any:
-    mod = None
+    """Load tomllib (3.11+) or tomli fallback when available."""
+
     try:
-        mod = importlib.import_module("tomllib")  # Python 3.11+
+        return importlib.import_module("tomllib")
     except Exception:
         try:
-            mod = importlib.import_module("tomli")  # Backport
+            return importlib.import_module("tomli")
         except Exception:
-            mod = None
-    return mod
+            return None
 
 
-toml: Any = _import_toml_like()
+toml = _import_toml_like()
 
 
 def _load_toml(path: Path) -> dict[str, Any]:
     if not toml:
         return {}
     try:
-        with open(path, "rb") as f:
-            data = toml.load(f)
-            return data if isinstance(data, dict) else {}
+        with path.open("rb") as stream:
+            data = toml.load(stream)
+        return data if isinstance(data, dict) else {}
     except Exception:
         return {}
 
 
 def load_project_config(start_dir: Path) -> dict[str, Any]:
-    cfg: dict[str, Any] = {}
+    """Load merged reqsync config from known project files."""
 
-    # reqsync.toml
-    rs = start_dir / "reqsync.toml"
-    if rs.exists():
-        cfg.update(_load_toml(rs))
+    config: dict[str, Any] = {}
 
-    # pyproject [tool.reqsync]
-    pyproj = start_dir / "pyproject.toml"
-    if pyproj.exists():
-        data = _load_toml(pyproj)
-        tool = data.get("tool") or {}
-        section = tool.get("reqsync") or {}
+    reqsync_toml = start_dir / "reqsync.toml"
+    if reqsync_toml.exists():
+        config.update(_load_toml(reqsync_toml))
+
+    pyproject = start_dir / "pyproject.toml"
+    if pyproject.exists():
+        data = _load_toml(pyproject)
+        tool = data.get("tool") if isinstance(data.get("tool"), dict) else {}
+        section = tool.get("reqsync") if isinstance(tool, dict) else {}
         if isinstance(section, dict):
-            cfg.update(section)
+            config.update(section)
 
-    # JSON fallback
-    rj = start_dir / "reqsync.json"
-    if rj.exists():
+    reqsync_json = start_dir / "reqsync.json"
+    if reqsync_json.exists():
         try:
-            cfg.update(json.loads(rj.read_text(encoding="utf-8")))
-        except Exception as e:
-            logging.warning("Failed to parse reqsync.json: %s", e)
+            payload = json.loads(reqsync_json.read_text(encoding="utf-8"))
+            if isinstance(payload, dict):
+                config.update(payload)
+        except Exception as exc:
+            logging.warning("Failed to parse reqsync.json: %s", exc)
 
-    return cfg
+    return config
 
 
-def _to_path(v: Any) -> Path | None:
-    if v in (None, "", "."):
+def _to_path(value: Any) -> Path | None:
+    if value in (None, "", "."):
         return None
     try:
-        return Path(str(v))
+        return Path(str(value))
     except Exception:
         return None
 
 
-def _to_tuple(v: Any) -> tuple[str, ...]:
-    if v is None:
+def _to_tuple(value: Any) -> tuple[str, ...]:
+    if value is None:
         return ()
-    if isinstance(v, (list, tuple)):
-        return tuple(str(x).strip() for x in v if str(x).strip())
-    if isinstance(v, str):
-        return tuple(p for p in (s.strip() for s in v.split(",")) if p)
+    if isinstance(value, (list, tuple, set)):
+        return tuple(str(item).strip() for item in value if str(item).strip())
+    if isinstance(value, str):
+        return tuple(item for item in (part.strip() for part in value.split(",")) if item)
     return ()
 
 
+def _to_bool(value: Any, default: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"1", "true", "yes", "on"}:
+            return True
+        if lowered in {"0", "false", "no", "off"}:
+            return False
+    return default
+
+
+def _to_int(value: Any, default: int) -> int:
+    try:
+        return int(value)
+    except Exception:
+        return default
+
+
+def _to_policy(value: Any, default: Policy) -> Policy:
+    if value is None:
+        return default
+
+    raw = getattr(value, "value", value)
+    allowed: set[str] = {"lower-bound", "floor-only", "floor-and-cap", "update-in-place"}
+    if isinstance(raw, str) and raw in allowed:
+        return cast(Policy, raw)
+
+    return default
+
+
 def merge_options(base: Options, overrides: dict[str, Any]) -> Options:
-    # Don't let config override an explicit CLI --path
-    cfg_path = _to_path(overrides.get("path"))
-    if cfg_path and Path(str(base.path)) == Path("requirements.txt"):
-        effective_path = cfg_path
+    """Return a new options object after applying overrides to base values."""
+
+    config_path = _to_path(overrides.get("path"))
+    if config_path and base.path == Path("requirements.txt"):
+        effective_path = config_path
     else:
         effective_path = base.path
 
     return Options(
         path=effective_path,
-        follow_includes=overrides.get("follow_includes", base.follow_includes),
-        update_constraints=overrides.get("update_constraints", base.update_constraints),
-        policy=overrides.get("policy", base.policy),
-        allow_prerelease=overrides.get("allow_prerelease", base.allow_prerelease),
-        keep_local=overrides.get("keep_local", base.keep_local),
-        no_upgrade=overrides.get("no_upgrade", base.no_upgrade),
-        pip_timeout_sec=int(overrides.get("pip_timeout_sec", base.pip_timeout_sec)),
+        follow_includes=_to_bool(overrides.get("follow_includes"), base.follow_includes),
+        update_constraints=_to_bool(overrides.get("update_constraints"), base.update_constraints),
+        policy=_to_policy(overrides.get("policy"), base.policy),
+        allow_prerelease=_to_bool(overrides.get("allow_prerelease"), base.allow_prerelease),
+        keep_local=_to_bool(overrides.get("keep_local"), base.keep_local),
+        no_upgrade=_to_bool(overrides.get("no_upgrade"), base.no_upgrade),
+        pip_timeout_sec=_to_int(overrides.get("pip_timeout_sec"), base.pip_timeout_sec),
         pip_args=str(overrides.get("pip_args", base.pip_args)),
         only=_to_tuple(overrides.get("only")) or base.only,
         exclude=_to_tuple(overrides.get("exclude")) or base.exclude,
-        check=overrides.get("check", base.check),
-        dry_run=overrides.get("dry_run", base.dry_run),
-        show_diff=overrides.get("show_diff", base.show_diff),
+        check=_to_bool(overrides.get("check"), base.check),
+        dry_run=_to_bool(overrides.get("dry_run"), base.dry_run),
+        show_diff=_to_bool(overrides.get("show_diff"), base.show_diff),
         json_report=_to_path(overrides.get("json_report")) or base.json_report,
         backup_suffix=str(overrides.get("backup_suffix", base.backup_suffix)),
-        timestamped_backups=overrides.get("timestamped_backups", base.timestamped_backups),
+        timestamped_backups=_to_bool(overrides.get("timestamped_backups"), base.timestamped_backups),
+        backup_keep_last=max(0, _to_int(overrides.get("backup_keep_last"), base.backup_keep_last)),
+        lock_timeout_sec=_to_int(overrides.get("lock_timeout_sec"), base.lock_timeout_sec),
         log_file=_to_path(overrides.get("log_file")) or base.log_file,
-        verbosity=int(overrides.get("verbosity", base.verbosity)),
-        quiet=overrides.get("quiet", base.quiet),
-        system_ok=overrides.get("system_ok", base.system_ok),
-        allow_hashes=overrides.get("allow_hashes", base.allow_hashes),
-        allow_dirty=overrides.get("allow_dirty", base.allow_dirty),
-        last_wins=overrides.get("last_wins", base.last_wins),
+        verbosity=_to_int(overrides.get("verbosity"), base.verbosity),
+        quiet=_to_bool(overrides.get("quiet"), base.quiet),
+        system_ok=_to_bool(overrides.get("system_ok"), base.system_ok),
+        allow_hashes=_to_bool(overrides.get("allow_hashes"), base.allow_hashes),
+        allow_dirty=_to_bool(overrides.get("allow_dirty"), base.allow_dirty),
+        last_wins=_to_bool(overrides.get("last_wins"), base.last_wins),
     )
+
+
+__all__ = ["load_project_config", "merge_options"]
