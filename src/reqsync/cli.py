@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import typer
 from click.core import ParameterSource
@@ -157,7 +157,7 @@ def _build_options(ctx: typer.Context, use_config: bool) -> Options:
     return merge_options(options, overrides)
 
 
-def _print_human_summary(payload: JsonResult, options: Options, report_path: Path | None) -> None:
+def _print_human_summary(payload: JsonResult, options: Options, report_path: Optional[Path]) -> None:
     mode = "apply"
     if options.check:
         mode = "check"
@@ -197,11 +197,11 @@ def _resolve_output_mode(output: OutputModeEnum, stdout_json: bool) -> OutputMod
 
 def _emit_result(
     payload: JsonResult,
-    result_diff: str | None,
+    result_diff: Optional[str],
     options: Options,
     output_mode: OutputModeEnum,
 ) -> None:
-    report_path: Path | None = None
+    report_path: Optional[Path] = None
     if options.json_report:
         report_path = write_json_report(payload, str(options.json_report))
 
@@ -264,12 +264,12 @@ def run_command(
         help="Allowlisted pip args passed to upgrade command.",
         rich_help_panel="Execution",
     ),
-    only: str | None = typer.Option(
+    only: Optional[str] = typer.Option(
         None,
         help="Comma-separated package globs to include.",
         rich_help_panel="Filtering",
     ),
-    exclude: str | None = typer.Option(
+    exclude: Optional[str] = typer.Option(
         None,
         help="Comma-separated package globs to exclude.",
         rich_help_panel="Filtering",
@@ -296,7 +296,7 @@ def run_command(
         help="Stdout output mode.",
         rich_help_panel="Output",
     ),
-    json_report: Path | None = typer.Option(
+    json_report: Optional[Path] = typer.Option(
         None,
         help="Write machine-readable JSON report to file.",
         rich_help_panel="Output",
@@ -348,7 +348,7 @@ def run_command(
         help="For duplicate packages, rewrite only final occurrence.",
         rich_help_panel="Safety",
     ),
-    log_file: Path | None = typer.Option(
+    log_file: Optional[Path] = typer.Option(
         None,
         help="Optional log file path.",
         rich_help_panel="Logging",

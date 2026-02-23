@@ -80,6 +80,21 @@ def _prune_old_backups(path: Path, suffix: str, keep_last: int) -> None:
             logging.warning("Unable to prune old backup: %s", stale)
 
 
+def _build_unique_timestamped_backup_path(path: Path, suffix: str) -> Path:
+    """Return a collision-safe timestamped backup path for one source file."""
+
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    base_name = f"{path.name}{suffix}.{stamp}"
+    backup = path.with_name(base_name)
+
+    counter = 1
+    while backup.exists():
+        backup = path.with_name(f"{base_name}-{counter:02d}")
+        counter += 1
+
+    return backup
+
+
 def backup_file(path: Path, suffix: str, timestamped: bool, keep_last: int) -> Path:
     """Create a backup copy and return its path."""
 
@@ -87,8 +102,7 @@ def backup_file(path: Path, suffix: str, timestamped: bool, keep_last: int) -> P
         raise FileNotFoundError(f"Cannot back up missing file: {path}")
 
     if timestamped:
-        stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-        backup = path.with_name(f"{path.name}{suffix}.{stamp}")
+        backup = _build_unique_timestamped_backup_path(path=path, suffix=suffix)
     else:
         backup = path.with_name(f"{path.name}{suffix}")
 

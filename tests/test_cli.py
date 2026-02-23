@@ -7,11 +7,13 @@ including missing files, hash safety blocks, and check-mode signaling.
 
 from __future__ import annotations
 
+import inspect
 import textwrap
 from pathlib import Path
 
 from typer.testing import CliRunner
 
+from reqsync import cli as cli_mod
 from reqsync import core as core_mod
 from reqsync._types import ExitCode
 from reqsync.cli import app
@@ -92,3 +94,20 @@ def test_cli_version_option_prints_version() -> None:
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
     assert result.output.startswith("reqsync ")
+
+
+def test_cli_annotations_avoid_pep604_runtime_union_for_py39_typer_compatibility() -> None:
+    callbacks = [
+        cli_mod.app_callback,
+        cli_mod.run_command,
+        cli_mod.help_command,
+        cli_mod.version_command,
+        cli_mod.mcp_server,
+    ]
+
+    for callback in callbacks:
+        for annotation in callback.__annotations__.values():
+            normalized = annotation if isinstance(annotation, str) else repr(annotation)
+            assert "|" not in normalized, f"PEP 604 union found in {callback.__name__}: {normalized}"
+
+        inspect.signature(callback)

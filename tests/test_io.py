@@ -8,6 +8,7 @@ and direct read/write round-trips.
 from __future__ import annotations
 
 from reqsync import core as core_mod
+from reqsync import io as io_mod
 from reqsync._types import Options
 from reqsync.core import sync
 from reqsync.io import backup_file, read_text_preserve, write_text_preserve
@@ -64,3 +65,28 @@ def test_timestamped_backup_pruning_can_be_disabled(tmp_path) -> None:
 
     backups = sorted(tmp_path.glob("requirements.txt.bak.*"))
     assert len(backups) == 4
+
+
+def test_timestamped_backup_naming_avoids_collisions(tmp_path, monkeypatch) -> None:
+    target = tmp_path / "requirements.txt"
+    target.write_text("requests>=2.0\n", encoding="utf-8")
+
+    class _FixedNow:
+        @staticmethod
+        def strftime(_fmt: str) -> str:
+            return "20260223-000000-000000"
+
+    class _FixedDateTime:
+        @staticmethod
+        def now() -> _FixedNow:
+            return _FixedNow()
+
+    monkeypatch.setattr(io_mod, "datetime", _FixedDateTime)
+
+    for i in range(3):
+        target.write_text(f"requests>={i}.0\n", encoding="utf-8")
+        backup_file(target, suffix=".bak", timestamped=True, keep_last=0)
+
+    backups = sorted(tmp_path.glob("requirements.txt.bak.*"))
+    assert len(backups) == 3
+    assert len({backup.name for backup in backups}) == 3
