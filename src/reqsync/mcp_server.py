@@ -8,6 +8,7 @@ are structured JSON payloads suitable for local AI model clients.
 
 from __future__ import annotations
 
+import importlib
 from typing import Any, TypedDict
 
 from ._types import ExitCode, JsonResult
@@ -17,12 +18,12 @@ from .errors import ReqsyncError
 FastMCP: Any
 _MCP_IMPORT_ERROR: Exception | None
 try:
-    from mcp.server.fastmcp import FastMCP as _FastMCP
+    _fastmcp_module = importlib.import_module("mcp.server.fastmcp")
 except Exception as exc:  # pragma: no cover - import guarded at runtime
     FastMCP = None
     _MCP_IMPORT_ERROR = exc
 else:
-    FastMCP = _FastMCP
+    FastMCP = _fastmcp_module.FastMCP
     _MCP_IMPORT_ERROR = None
 
 
